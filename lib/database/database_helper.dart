@@ -4,7 +4,7 @@ import 'package:path/path.dart';
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   static Database? _database;
-  static const int _dbVersion = 2;
+  static const int _dbVersion = 3;
 
   factory DatabaseHelper() => _instance;
 
@@ -46,6 +46,21 @@ class DatabaseHelper {
         PRIMARY KEY (server_base_url, worktree)
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE skills (
+        name TEXT NOT NULL,
+        description TEXT,
+        source TEXT,
+        agent TEXT,
+        model TEXT,
+        template TEXT NOT NULL DEFAULT '',
+        hints TEXT NOT NULL DEFAULT '[]',
+        enabled INTEGER NOT NULL DEFAULT 1,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (name)
+      )
+    ''');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -56,6 +71,23 @@ class DatabaseHelper {
           worktree TEXT NOT NULL,
           pinned_at INTEGER NOT NULL,
           PRIMARY KEY (server_base_url, worktree)
+        )
+      ''');
+    }
+
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE skills (
+          name TEXT NOT NULL,
+          description TEXT,
+          source TEXT,
+          agent TEXT,
+          model TEXT,
+          template TEXT NOT NULL DEFAULT '',
+          hints TEXT NOT NULL DEFAULT '[]',
+          enabled INTEGER NOT NULL DEFAULT 1,
+          updated_at INTEGER NOT NULL,
+          PRIMARY KEY (name)
         )
       ''');
     }
