@@ -90,6 +90,8 @@ class ChatConfigNotifier extends _$ChatConfigNotifier {
     final messages = await ref.read(sessionMessagesProvider(sessionID).future);
     if (!ref.mounted || messages.isEmpty) return;
 
+    // Track the most recent AssistantMessage for model fallback.
+    AssistantMessage? lastAssistant;
     for (final message in messages.reversed) {
       if (message.info case final UserMessage user) {
         _setState(
@@ -100,17 +102,18 @@ class ChatConfigNotifier extends _$ChatConfigNotifier {
         );
         return;
       }
+      lastAssistant ??= message.info as AssistantMessage;
+    }
 
-      if (message.info case final AssistantMessage assistant) {
-        _setState(
-          model: MessageModel(
-            providerID: assistant.providerID,
-            modelID: assistant.modelID,
-          ),
-          persistModel: true,
-        );
-        return;
-      }
+    // No UserMessage found: fallback to the last AssistantMessage's model.
+    if (lastAssistant != null) {
+      _setState(
+        model: MessageModel(
+          providerID: lastAssistant.providerID,
+          modelID: lastAssistant.modelID,
+        ),
+        persistModel: true,
+      );
     }
   }
 

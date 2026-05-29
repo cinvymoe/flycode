@@ -245,6 +245,75 @@ void main() {
     expect(config.model.modelID, 'assistant-model');
   });
 
+  test(
+    'session with UserMessage before AssistantMessage restores agent from UserMessage',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        _kCacheKey: jsonEncode({
+          'providerID': 'cached-provider',
+          'modelID': 'cached-model',
+        }),
+      });
+      _fakeSessionMessages = <MessageWithParts>[
+        _userMessage(
+          agent: 'code',
+          providerID: 'user-provider',
+          modelID: 'user-model',
+        ),
+        _assistantMessage(
+          providerID: 'assistant-provider',
+          modelID: 'assistant-model',
+        ),
+      ];
+
+      final container = _makeContainer();
+      addTearDown(container.dispose);
+
+      final sub = _listenChatConfig(container);
+      addTearDown(sub.close);
+      await _flushAsyncWork();
+
+      container.read(chatViewStateProvider.notifier).selectSessionId('sess-1');
+      await _flushAsyncWork();
+
+      final config = container.read(chatConfigProvider);
+      // Agent comes from the UserMessage, not the default 'build'.
+      expect(config.agent, 'code');
+      // Model also comes from the UserMessage (has priority over Assistant).
+      expect(config.model.providerID, 'user-provider');
+      expect(config.model.modelID, 'user-model');
+    },
+  );
+
+  test(
+    'session with only AssistantMessage keeps default agent and uses assistant model',
+    () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      _fakeSessionMessages = <MessageWithParts>[
+        _assistantMessage(
+          providerID: 'assistant-provider',
+          modelID: 'assistant-model',
+        ),
+      ];
+
+      final container = _makeContainer();
+      addTearDown(container.dispose);
+
+      final sub = _listenChatConfig(container);
+      addTearDown(sub.close);
+      await _flushAsyncWork();
+
+      container.read(chatViewStateProvider.notifier).selectSessionId('sess-1');
+      await _flushAsyncWork();
+
+      final config = container.read(chatConfigProvider);
+      // No UserMessage → agent stays at default.
+      expect(config.agent, 'build');
+      expect(config.model.providerID, 'assistant-provider');
+      expect(config.model.modelID, 'assistant-model');
+    },
+  );
+
   test('switch back to new session restores model from cache', () async {
     SharedPreferences.setMockInitialValues({
       _kCacheKey: jsonEncode({
