@@ -326,8 +326,17 @@ class _NotificationGlobalEventHandler implements GlobalEventHandler {
 
   @override
   void handle(Object payload) {
-    if (payload is! EventSessionIdle) return;
-    unawaited(_notifySessionCompleted(payload.sessionID));
+    if (payload is EventSessionIdle) {
+      unawaited(_notifySessionCompleted(payload.sessionID));
+      return;
+    }
+
+    if (payload is EventSessionError) {
+      final sessionID = payload.sessionID;
+      if (sessionID != null && sessionID.isNotEmpty) {
+        unawaited(_notifySessionError(sessionID));
+      }
+    }
   }
 
   Future<void> _notifySessionCompleted(String sessionID) async {
@@ -349,6 +358,31 @@ class _NotificationGlobalEventHandler implements GlobalEventHandler {
           .read(localNotificationServiceProvider)
           .showSessionCompleted(
             sessionTitle: _normalizedSessionTitle(session.title),
+          );
+    } catch (_) {
+      // Ignore local notification failures to avoid affecting SSE handling.
+    }
+  }
+
+  Future<void> _notifySessionError(String sessionID) async {
+    final mode = ref.read(sessionCompletionNotificationModeProvider);
+    final lifecycleState = ref.read(appLifecycleStateProvider);
+    final shouldSend = shouldSendSessionCompletionNotification(
+      mode: mode,
+      lifecycleState: lifecycleState,
+    );
+    if (!shouldSend) return;
+
+    final session = await _sessionForNotification(sessionID);
+    if (session != null && _isSubSession(session)) return;
+
+    try {
+      await ref
+          .read(localNotificationServiceProvider)
+          .showSessionError(
+            sessionTitle: session != null
+                ? _normalizedSessionTitle(session.title)
+                : null,
           );
     } catch (_) {
       // Ignore local notification failures to avoid affecting SSE handling.

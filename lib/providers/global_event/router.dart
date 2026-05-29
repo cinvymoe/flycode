@@ -94,7 +94,10 @@ List<GlobalEventRouteTarget> routeGlobalEventPayload(Object payload) {
   }
 
   if (payload is EventSessionError) {
-    return const <GlobalEventRouteTarget>[GlobalEventRouteTarget.unread];
+    return const <GlobalEventRouteTarget>[
+      GlobalEventRouteTarget.unread,
+      GlobalEventRouteTarget.notification,
+    ];
   }
 
   return const <GlobalEventRouteTarget>[];
