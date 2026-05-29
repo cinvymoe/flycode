@@ -41,6 +41,38 @@ class LocalNotificationService {
     await _requestPermissionsIfNeeded();
   }
 
+  Future<void> showSessionError({String? sessionTitle}) async {
+    await ensurePermissionPrompted();
+    final l10n = await _resolveLocalizations();
+
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'session_error',
+        'Session Error',
+        channelDescription: 'Notifications for session errors',
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+      macOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    );
+
+    final normalizedTitle = sessionTitle?.trim();
+    final body = (normalizedTitle != null && normalizedTitle.isNotEmpty)
+        ? l10n.sessionErrorNotificationBodyWithTitle(normalizedTitle)
+        : l10n.sessionErrorNotificationBodyWithoutTitle;
+    final id = ('error-$normalizedTitle').hashCode & 0x7fffffff;
+    await _plugin.show(id, l10n.sessionErrorNotificationTitle, body, details);
+  }
+
   Future<void> showSessionCompleted({String? sessionTitle}) async {
     await ensurePermissionPrompted();
     final l10n = await _resolveLocalizations();
