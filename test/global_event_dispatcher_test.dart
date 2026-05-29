@@ -155,7 +155,10 @@ void main() {
       routeGlobalEventPayload(
         EventSessionError(type: 'session.error', sessionID: 'session-1'),
       ),
-      <GlobalEventRouteTarget>[GlobalEventRouteTarget.unread],
+      <GlobalEventRouteTarget>[
+        GlobalEventRouteTarget.unread,
+        GlobalEventRouteTarget.notification,
+      ],
     );
     expect(
       routeGlobalEventPayload(const EventUnknown('future.event')),
