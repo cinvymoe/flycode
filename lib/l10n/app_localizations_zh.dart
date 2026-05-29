@@ -663,4 +663,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sessionListNewSession => '新建会话';
+
+  @override
+  String get skillSelectionTitle => 'Skill';
+
+  @override
+  String get skillSelectionSearchHint => '搜索 Skill';
+
+  @override
+  String get skillSelectionNoSkills => '暂无可用的 Skill';
 }

@@ -442,5 +442,8 @@
   "gitFilesStatusAdded": "新增",
   "gitFilesStatusDeleted": "删除",
   "gitFilesStatusModified": "修改",
-  "sessionListNewSession": "新建会话"
+  "sessionListNewSession": "新建会话",
+  "skillSelectionTitle": "Skill",
+  "skillSelectionSearchHint": "搜索 Skill",
+  "skillSelectionNoSkills": "暂无可用的 Skill"
 }

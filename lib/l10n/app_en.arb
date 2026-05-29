@@ -442,5 +442,8 @@
   "gitFilesStatusAdded": "added",
   "gitFilesStatusDeleted": "deleted",
   "gitFilesStatusModified": "modified",
-  "sessionListNewSession": "New Session"
+  "sessionListNewSession": "New Session",
+  "skillSelectionTitle": "Skills",
+  "skillSelectionSearchHint": "Search skills",
+  "skillSelectionNoSkills": "No skills available"
 }
