@@ -164,6 +164,6 @@ flutter test
 ## 7) Agent 快速 checklist
 - 不手改 `*.g.dart`
 - provider/model 改动后运行 `build_runner`
-- 完成后至少执行 `dart format .` + `flutter analyze`
+- 完成后必须执行 CI 验证流程：`dart run build_runner build --delete-conflicting-outputs && dart format . && flutter analyze && flutter test`
 - 涉及逻辑改动时补或更新测试
 - 保持最小必要改动，遵循现有架构与命名

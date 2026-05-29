@@ -15,6 +15,7 @@ const _kDefaultAgent = 'build';
 const _kFallbackProviderID = 'opencode';
 const _kFallbackModelID = 'minimax-m2.5-free';
 const _kLastUsedModelCacheKey = 'chat_config_last_used_model';
+const _kLastUsedAgentCacheKey = 'chat_config_last_used_agent';
 
 class ChatConfig {
   final String agent;
@@ -48,7 +49,7 @@ class ChatConfigNotifier extends _$ChatConfigNotifier {
     if (initialState.sessionId != null && !initialState.isPending) {
       unawaited(_syncModelFromSession(initialState.sessionId!));
     } else {
-      unawaited(_restoreModelFromCacheIfNoSession());
+      unawaited(_restoreConfigFromCacheIfNoSession());
     }
 
     return ChatConfig(
@@ -69,7 +70,7 @@ class ChatConfigNotifier extends _$ChatConfigNotifier {
     // New-session flow (isPending=true) or nothing selected: restore from
     // cache so input can fallback to the last-used model.
     if (next.isPending || newSessionId == null) {
-      await _restoreModelFromCacheIfNoSession();
+      await _restoreConfigFromCacheIfNoSession();
       return;
     }
 
@@ -91,7 +92,12 @@ class ChatConfigNotifier extends _$ChatConfigNotifier {
 
     for (final message in messages.reversed) {
       if (message.info case final UserMessage user) {
-        _setState(agent: user.agent, model: user.model, persistModel: true);
+        _setState(
+          agent: user.agent,
+          model: user.model,
+          persistAgent: true,
+          persistModel: true,
+        );
         return;
       }
 
@@ -112,7 +118,7 @@ class ChatConfigNotifier extends _$ChatConfigNotifier {
   /// bound model field), the model is also updated automatically.
   void setAgent(String agent, {agent_model.AgentModel? linkedModel}) {
     if (linkedModel == null) {
-      _setState(agent: agent);
+      _setState(agent: agent, persistAgent: true);
       return;
     }
 
@@ -122,6 +128,7 @@ class ChatConfigNotifier extends _$ChatConfigNotifier {
         providerID: linkedModel.providerID,
         modelID: linkedModel.modelID,
       ),
+      persistAgent: true,
       persistModel: true,
     );
   }
@@ -130,17 +137,18 @@ class ChatConfigNotifier extends _$ChatConfigNotifier {
     _setState(model: model, persistModel: true);
   }
 
-  Future<void> _restoreModelFromCacheIfNoSession() async {
+  Future<void> _restoreConfigFromCacheIfNoSession() async {
     final chatState = ref.read(chatViewStateProvider);
     if (chatState.sessionId != null) return;
 
     final cachedModel = await _readCachedModel();
-    if (!ref.mounted || cachedModel == null) return;
+    final cachedAgent = await _readCachedAgent();
+    if (!ref.mounted) return;
 
     final latestState = ref.read(chatViewStateProvider);
     if (latestState.sessionId != null) return;
 
-    _setState(model: cachedModel);
+    _setState(agent: cachedAgent, model: cachedModel);
   }
 
   Future<MessageModel?> _readCachedModel() async {
@@ -166,10 +174,23 @@ class ChatConfigNotifier extends _$ChatConfigNotifier {
     await prefs.setString(_kLastUsedModelCacheKey, jsonEncode(model.toJson()));
   }
 
+  Future<String?> _readCachedAgent() async {
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    final agent = prefs.getString(_kLastUsedAgentCacheKey);
+    if (agent == null || agent.trim().isEmpty) return null;
+    return agent;
+  }
+
+  Future<void> _persistAgent(String agent) async {
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    await prefs.setString(_kLastUsedAgentCacheKey, agent);
+  }
+
   void _setState({
     String? agent,
     MessageModel? model,
     bool persistModel = false,
+    bool persistAgent = false,
   }) {
     if (!ref.mounted) return;
     final next = state.copyWith(agent: agent, model: model);
@@ -182,6 +203,9 @@ class ChatConfigNotifier extends _$ChatConfigNotifier {
 
     if (persistModel && model != null) {
       unawaited(_persistModel(model));
+    }
+    if (persistAgent && agent != null) {
+      unawaited(_persistAgent(agent));
     }
   }
 }
