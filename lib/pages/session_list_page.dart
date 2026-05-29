@@ -194,16 +194,19 @@ class SessionListPage extends ConsumerStatefulWidget {
 
 class _SessionListPageState extends ConsumerState<SessionListPage> {
   @override
-  void initState() {
-    super.initState();
-    Future.microtask(() {
-      if (!mounted) return;
-      ref.read(currentDirectoryProvider.notifier).set(widget.directory);
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // Ensure currentDirectory is always set to this page's directory.
+    // When popping back from /chat, the chat page's PopScope clears
+    // currentDirectoryProvider, but initState won't re-run since this
+    // page was already mounted underneath. Without this guard,
+    // sessionsProvider returns [] because directory is null.
+    final currentDir = ref.read(currentDirectoryProvider);
+    if (currentDir != widget.directory) {
+      Future.microtask(() {
+        if (!mounted) return;
+        ref.read(currentDirectoryProvider.notifier).set(widget.directory);
+      });
+    }
     final l10n = context.l10n;
     final colorScheme = Theme.of(context).colorScheme;
     final tokens = context.tokens;
@@ -245,7 +248,6 @@ class _SessionListPageState extends ConsumerState<SessionListPage> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) return;
         ref.read(homePageBootstrapControllerProvider.notifier).reset();
-        ref.read(currentDirectoryProvider.notifier).clear();
       },
       child: Scaffold(
         backgroundColor: colorScheme.surface,
