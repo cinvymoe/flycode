@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.1.0 - 2026-05-30
+
+### Added
+- Git files page: view changed files with add/delete/modify status and line counts.
+- Session list page: pick or create a session when opening a project.
+- Command source badges: Skill / MCP / Cmd labels on command suggestions.
+- Command suggestion sorting: skills first, then commands, then MCP.
+- Session error notification: push notification when a session encounters an error.
+- `source` field on Command model for command origin tracking.
+- `FileStatus` model and `/file/status` API endpoint.
+- `fileStatusProvider` for reactive git file status.
+
+### Changed
+- Project open flow now navigates to session list instead of directly to chat.
+- Session error events now route to both unread indicator and notification handler.
+
 ## v1.0.0 - 2026-04-09
 
 ### Added
