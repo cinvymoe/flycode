@@ -62,8 +62,7 @@ import 'app_localizations_zh.dart';
 /// be consistent with the languages listed in the AppLocalizations.supportedLocales
 /// property.
 abstract class AppLocalizations {
-  AppLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+  AppLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -71,8 +70,7 @@ abstract class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations);
   }
 
-  static const LocalizationsDelegate<AppLocalizations> delegate =
-      _AppLocalizationsDelegate();
+  static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -84,18 +82,17 @@ abstract class AppLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
-      <LocalizationsDelegate<dynamic>>[
-        delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
-    Locale('zh'),
+    Locale('zh')
   ];
 
   /// No description provided for @appTitle.
@@ -1183,10 +1180,99 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A session has completed'**
   String get sessionCompletedNotificationBodyWithoutTitle;
+
+  /// No description provided for @sessionErrorNotificationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Session error'**
+  String get sessionErrorNotificationTitle;
+
+  /// No description provided for @sessionErrorNotificationBodyWithTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{title} encountered an error'**
+  String sessionErrorNotificationBodyWithTitle(String title);
+
+  /// No description provided for @sessionErrorNotificationBodyWithoutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A session encountered an error'**
+  String get sessionErrorNotificationBodyWithoutTitle;
+
+  /// No description provided for @commandSourceSkill.
+  ///
+  /// In en, this message translates to:
+  /// **'Skill'**
+  String get commandSourceSkill;
+
+  /// No description provided for @commandSourceCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Cmd'**
+  String get commandSourceCommand;
+
+  /// No description provided for @commandSourceMcp.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP'**
+  String get commandSourceMcp;
+
+  /// No description provided for @gitFilesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Git Files'**
+  String get gitFilesTitle;
+
+  /// No description provided for @gitFilesEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No changes'**
+  String get gitFilesEmptyTitle;
+
+  /// No description provided for @gitFilesEmptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No file changes detected in the current project'**
+  String get gitFilesEmptySubtitle;
+
+  /// No description provided for @gitFilesLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load git file status'**
+  String get gitFilesLoadFailed;
+
+  /// No description provided for @gitFilesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} files changed'**
+  String gitFilesCount(int count);
+
+  /// No description provided for @gitFilesStatusAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'added'**
+  String get gitFilesStatusAdded;
+
+  /// No description provided for @gitFilesStatusDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'deleted'**
+  String get gitFilesStatusDeleted;
+
+  /// No description provided for @gitFilesStatusModified.
+  ///
+  /// In en, this message translates to:
+  /// **'modified'**
+  String get gitFilesStatusModified;
+
+  /// No description provided for @sessionListNewSession.
+  ///
+  /// In en, this message translates to:
+  /// **'New Session'**
+  String get sessionListNewSession;
 }
 
-class _AppLocalizationsDelegate
-    extends LocalizationsDelegate<AppLocalizations> {
+class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
   const _AppLocalizationsDelegate();
 
   @override
@@ -1195,26 +1281,25 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['en', 'zh'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['en', 'zh'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
 }
 
 AppLocalizations lookupAppLocalizations(Locale locale) {
+
+
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
-    case 'en':
-      return AppLocalizationsEn();
-    case 'zh':
-      return AppLocalizationsZh();
+    case 'en': return AppLocalizationsEn();
+    case 'zh': return AppLocalizationsZh();
   }
 
   throw FlutterError(
     'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
     'an issue with the localizations generation tool. Please file an issue '
     'on GitHub with a reproducible sample app and the gen-l10n configuration '
-    'that was used.',
+    'that was used.'
   );
 }

@@ -614,4 +614,53 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sessionCompletedNotificationBodyWithoutTitle => '有一个会话已完成';
+
+  @override
+  String get sessionErrorNotificationTitle => '会话出错';
+
+  @override
+  String sessionErrorNotificationBodyWithTitle(String title) {
+    return '$title 遇到错误';
+  }
+
+  @override
+  String get sessionErrorNotificationBodyWithoutTitle => '有一个会话遇到错误';
+
+  @override
+  String get commandSourceSkill => 'Skill';
+
+  @override
+  String get commandSourceCommand => '命令';
+
+  @override
+  String get commandSourceMcp => 'MCP';
+
+  @override
+  String get gitFilesTitle => 'Git 文件';
+
+  @override
+  String get gitFilesEmptyTitle => '暂无变更';
+
+  @override
+  String get gitFilesEmptySubtitle => '当前项目未检测到文件变更';
+
+  @override
+  String get gitFilesLoadFailed => '加载 Git 文件状态失败';
+
+  @override
+  String gitFilesCount(int count) {
+    return '$count 个文件变更';
+  }
+
+  @override
+  String get gitFilesStatusAdded => '新增';
+
+  @override
+  String get gitFilesStatusDeleted => '删除';
+
+  @override
+  String get gitFilesStatusModified => '修改';
+
+  @override
+  String get sessionListNewSession => '新建会话';
 }
