@@ -3,6 +3,7 @@ import '../../providers/current_directory_provider.dart';
 import 'api_client.dart';
 import 'models/file_content.dart';
 import 'models/file_node.dart';
+import 'models/file_status.dart';
 
 part 'file_api.g.dart';
 
@@ -99,6 +100,21 @@ class FileApi {
     return result
         .whereType<Map<String, dynamic>>()
         .map(FileNode.fromJson)
+        .toList();
+  }
+
+  /// 获取当前项目目录下 Git 变更文件列表（[GET /file/status]）。
+  ///
+  /// 返回 [FileStatus] 列表，包含每个变更文件的路径、增删行数和状态。
+  Future<List<FileStatus>> getFileStatus() async {
+    final result = await _client.get(
+      '/file/status',
+      extraHeaders: _extraHeaders,
+    );
+    if (result is! List) return [];
+    return result
+        .whereType<Map<String, dynamic>>()
+        .map(FileStatus.fromJson)
         .toList();
   }
 
