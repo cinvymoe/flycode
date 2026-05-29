@@ -11,12 +11,14 @@ import 'pages/home_page.dart';
 import 'pages/language_page.dart';
 import 'pages/project_list_page.dart';
 import 'pages/session_context_page.dart';
+import 'pages/session_list_page.dart';
 import 'pages/session_diff_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/theme_mode_page.dart';
 import 'pages/server_config_page.dart';
 import 'pages/model_config_page.dart';
 import 'pages/session_completion_notification_page.dart';
+import 'pages/git_files_page.dart';
 import 'pages/sub_session_page.dart';
 import 'models/server_config.dart';
 import 'route_navigation.dart';
@@ -76,6 +78,14 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const AboutPage(),
     ),
     GoRoute(
+      path: '/sessions',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final directory = state.extra as String;
+        return SessionListPage(directory: directory);
+      },
+    ),
+    GoRoute(
       path: '/projects',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const ProjectListPage(),
@@ -111,6 +121,11 @@ final GoRouter appRouter = GoRouter(
         final args = state.extra as SessionContextRouteArgs;
         return SessionContextPage(sessionID: args.sessionID);
       },
+    ),
+    GoRoute(
+      path: gitFilesRoutePath,
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const GitFilesPage(),
     ),
   ],
 );
