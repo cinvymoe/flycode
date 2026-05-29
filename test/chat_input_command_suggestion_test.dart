@@ -28,6 +28,7 @@ void main() {
     description: 'create or update AGENTS.md',
     template: 'template',
     hints: <String>[],
+    source: 'command',
   );
 
   const reviewCommand = Command(
@@ -35,6 +36,23 @@ void main() {
     description: 'review changes in commit, branch, or PR',
     template: 'template',
     hints: <String>[],
+    source: 'command',
+  );
+
+  const skillCommand = Command(
+    name: 'riverpod',
+    description: 'Riverpod state management guidance',
+    template: 'template',
+    hints: <String>[],
+    source: 'skill',
+  );
+
+  const mcpCommand = Command(
+    name: 'figma-use',
+    description: 'Use Figma MCP tool',
+    template: 'template',
+    hints: <String>[],
+    source: 'mcp',
   );
 
   List<Command> manyCommands() => List<Command>.generate(
@@ -229,6 +247,7 @@ void main() {
         description: 'Execute git commit with conventional commit message',
         template: 'template',
         hints: <String>[],
+        source: 'command',
       ),
     ], query: 'g');
     await tester.pumpAndSettle();
@@ -287,5 +306,94 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(scrollController.offset, 0);
+  });
+
+  testWidgets('renders source badge for skill and mcp commands', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      buildHarness(
+        brightness: Brightness.light,
+        child: buildCommandSuggestionListForTest(
+          commands: const [initCommand, skillCommand, mcpCommand],
+          onSelect: (_) {},
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Skill badge should be visible.
+    expect(find.text('Skill'), findsOneWidget);
+    // MCP badge should be visible.
+    expect(find.text('MCP'), findsOneWidget);
+    // Command badge should be visible.
+    expect(find.text('Cmd'), findsOneWidget);
+  });
+
+  testWidgets('no source badge when source is null', (tester) async {
+    const noSourceCommand = Command(
+      name: 'plain',
+      template: 'template',
+      hints: <String>[],
+    );
+
+    await tester.pumpWidget(
+      buildHarness(
+        brightness: Brightness.light,
+        child: buildCommandSuggestionListForTest(
+          commands: const [noSourceCommand],
+          onSelect: (_) {},
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Skill'), findsNothing);
+    expect(find.text('MCP'), findsNothing);
+    expect(find.text('Cmd'), findsNothing);
+    expect(find.text('/plain'), findsOneWidget);
+  });
+
+  test('Command.fromJson parses source field', () {
+    final json = <String, dynamic>{
+      'name': 'riverpod',
+      'description': 'Riverpod guidance',
+      'template': 'template',
+      'hints': <String>[],
+      'source': 'skill',
+    };
+    final cmd = Command.fromJson(json);
+    expect(cmd.source, 'skill');
+    expect(cmd.name, 'riverpod');
+  });
+
+  test('Command.fromJson handles missing source field', () {
+    final json = <String, dynamic>{
+      'name': 'init',
+      'template': 'template',
+      'hints': <String>[],
+    };
+    final cmd = Command.fromJson(json);
+    expect(cmd.source, isNull);
+  });
+
+  test('Command.toJson includes source when present', () {
+    const cmd = Command(
+      name: 'riverpod',
+      description: 'Riverpod guidance',
+      template: 'template',
+      hints: <String>[],
+      source: 'skill',
+    );
+    final json = cmd.toJson();
+    expect(json['source'], 'skill');
+  });
+
+  test('Command.toJson omits source when null', () {
+    const cmd = Command(name: 'init', template: 'template', hints: <String>[]);
+    final json = cmd.toJson();
+    expect(json.containsKey('source'), isFalse);
   });
 }

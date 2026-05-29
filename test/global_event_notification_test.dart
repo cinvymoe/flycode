@@ -61,10 +61,16 @@ class _FakeLocalNotificationService extends LocalNotificationService {
   _FakeLocalNotificationService() : super(FlutterLocalNotificationsPlugin());
 
   final List<String?> shownSessionTitles = <String?>[];
+  final List<String?> shownErrorSessionTitles = <String?>[];
 
   @override
   Future<void> showSessionCompleted({String? sessionTitle}) async {
     shownSessionTitles.add(sessionTitle);
+  }
+
+  @override
+  Future<void> showSessionError({String? sessionTitle}) async {
+    shownErrorSessionTitles.add(sessionTitle);
   }
 }
 
@@ -285,6 +291,176 @@ void main() {
 
       expect(sessionApi.requestedSessionIds, ['root-3']);
       expect(notificationService.shownSessionTitles, isEmpty);
+      expect(container.read(globalEventListenerProvider).hasError, isFalse);
+    },
+  );
+
+  test('session error sends error notification', () async {
+    final controller = StreamController<GlobalEvent>();
+    final globalApi = _FakeGlobalApi(controller);
+    final sessionApi = _FakeSessionApi(
+      sessionsById: <String, Session>{
+        'root-err': _session(id: 'root-err', title: 'Error session'),
+      },
+    );
+    final notificationService = _FakeLocalNotificationService();
+    final container = _createContainer(
+      globalApi: globalApi,
+      sessionApi: sessionApi,
+      notificationService: notificationService,
+    );
+
+    addTearDown(() async {
+      await controller.close();
+      container.dispose();
+    });
+
+    final sub = container.listen<AsyncValue<GlobalEvent>>(
+      globalEventListenerProvider,
+      (previous, next) {},
+      fireImmediately: true,
+    );
+    addTearDown(sub.close);
+    await _flushAsyncWork();
+
+    controller.add(
+      GlobalEvent(
+        directory: '/tmp/project',
+        payload: EventSessionError(
+          type: 'session.error',
+          sessionID: 'root-err',
+        ),
+      ),
+    );
+    await _flushAsyncWork();
+
+    expect(sessionApi.requestedSessionIds, ['root-err']);
+    expect(notificationService.shownErrorSessionTitles, ['Error session']);
+    expect(notificationService.shownSessionTitles, isEmpty);
+  });
+
+  test('sub-session error does not send notification', () async {
+    final controller = StreamController<GlobalEvent>();
+    final globalApi = _FakeGlobalApi(controller);
+    final sessionApi = _FakeSessionApi(
+      sessionsById: <String, Session>{
+        'sub-err': _session(
+          id: 'sub-err',
+          parentID: 'root-err',
+          title: 'Sub error session',
+        ),
+      },
+    );
+    final notificationService = _FakeLocalNotificationService();
+    final container = _createContainer(
+      globalApi: globalApi,
+      sessionApi: sessionApi,
+      notificationService: notificationService,
+    );
+
+    addTearDown(() async {
+      await controller.close();
+      container.dispose();
+    });
+
+    final sub = container.listen<AsyncValue<GlobalEvent>>(
+      globalEventListenerProvider,
+      (previous, next) {},
+      fireImmediately: true,
+    );
+    addTearDown(sub.close);
+    await _flushAsyncWork();
+
+    controller.add(
+      GlobalEvent(
+        directory: '/tmp/project',
+        payload: EventSessionError(type: 'session.error', sessionID: 'sub-err'),
+      ),
+    );
+    await _flushAsyncWork();
+
+    expect(sessionApi.requestedSessionIds, ['sub-err']);
+    expect(notificationService.shownErrorSessionTitles, isEmpty);
+  });
+
+  test('session error without sessionID does not send notification', () async {
+    final controller = StreamController<GlobalEvent>();
+    final globalApi = _FakeGlobalApi(controller);
+    final sessionApi = _FakeSessionApi(sessionsById: const <String, Session>{});
+    final notificationService = _FakeLocalNotificationService();
+    final container = _createContainer(
+      globalApi: globalApi,
+      sessionApi: sessionApi,
+      notificationService: notificationService,
+    );
+
+    addTearDown(() async {
+      await controller.close();
+      container.dispose();
+    });
+
+    final sub = container.listen<AsyncValue<GlobalEvent>>(
+      globalEventListenerProvider,
+      (previous, next) {},
+      fireImmediately: true,
+    );
+    addTearDown(sub.close);
+    await _flushAsyncWork();
+
+    controller.add(
+      GlobalEvent(
+        directory: '/tmp/project',
+        payload: EventSessionError(type: 'session.error', sessionID: null),
+      ),
+    );
+    await _flushAsyncWork();
+
+    expect(sessionApi.requestedSessionIds, isEmpty);
+    expect(notificationService.shownErrorSessionTitles, isEmpty);
+  });
+
+  test(
+    'session error with getSession failure still sends notification without title',
+    () async {
+      final controller = StreamController<GlobalEvent>();
+      final globalApi = _FakeGlobalApi(controller);
+      final sessionApi = _FakeSessionApi(
+        sessionsById: const <String, Session>{},
+        throwOnGetSession: true,
+      );
+      final notificationService = _FakeLocalNotificationService();
+      final container = _createContainer(
+        globalApi: globalApi,
+        sessionApi: sessionApi,
+        notificationService: notificationService,
+      );
+
+      addTearDown(() async {
+        await controller.close();
+        container.dispose();
+      });
+
+      final sub = container.listen<AsyncValue<GlobalEvent>>(
+        globalEventListenerProvider,
+        (previous, next) {},
+        fireImmediately: true,
+      );
+      addTearDown(sub.close);
+      await _flushAsyncWork();
+
+      controller.add(
+        GlobalEvent(
+          directory: '/tmp/project',
+          payload: EventSessionError(
+            type: 'session.error',
+            sessionID: 'root-err-fail',
+          ),
+        ),
+      );
+      await _flushAsyncWork();
+
+      expect(sessionApi.requestedSessionIds, ['root-err-fail']);
+      expect(notificationService.shownErrorSessionTitles, [null]);
       expect(container.read(globalEventListenerProvider).hasError, isFalse);
     },
   );
