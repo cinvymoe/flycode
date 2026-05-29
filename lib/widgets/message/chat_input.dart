@@ -147,10 +147,23 @@ class ChatInputState extends ConsumerState<ChatInput> {
       if (panelController == null) {
         return;
       }
+      // Sort: skills first, then commands, then mcp; within each group,
+      // maintain alphabetical order by name.
+      final sorted = List<Command>.of(filtered)
+        ..sort((a, b) {
+          final sourceOrder = (String? s) => switch (s) {
+            'skill' => 0,
+            'command' => 1,
+            'mcp' => 2,
+            _ => 3,
+          };
+          final cmp = sourceOrder(a.source).compareTo(sourceOrder(b.source));
+          return cmp != 0 ? cmp : a.name.compareTo(b.name);
+        });
       if (!panelController.visible) {
-        panelController.show(filtered, query: query);
+        panelController.show(sorted, query: query);
       } else {
-        panelController.update(filtered, query: query);
+        panelController.update(sorted, query: query);
       }
     }
   }

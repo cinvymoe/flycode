@@ -483,14 +483,25 @@ class _CommandSuggestionTileState extends State<CommandSuggestionTile> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    '/${widget.command.name}',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontFamily: 'PlusJakartaSans',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      height: 1.15,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          '/${widget.command.name}',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontFamily: 'PlusJakartaSans',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            height: 1.15,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (widget.command.source != null) ...[
+                        const SizedBox(width: 6),
+                        _CommandSourceBadge(source: widget.command.source!),
+                      ],
+                    ],
                   ),
                   if (hasDescription) ...[
                     const SizedBox(height: 2),
@@ -511,6 +522,45 @@ class _CommandSuggestionTileState extends State<CommandSuggestionTile> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CommandSourceBadge extends StatelessWidget {
+  const _CommandSourceBadge({required this.source});
+
+  final String source;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final (label, bgColor, fgColor) = switch (source) {
+      'skill' => ('Skill', const Color(0xFF8B5CF6), Colors.white),
+      'mcp' => ('MCP', const Color(0xFF10B981), Colors.white),
+      _ => ('Cmd', const Color(0xFF3B82F6), Colors.white),
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: bgColor.withValues(
+          alpha: theme.brightness == Brightness.dark ? 0.35 : 0.18,
+        ),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+          height: 1.3,
+          color: theme.brightness == Brightness.dark
+              ? bgColor.withValues(alpha: 1)
+              : bgColor,
+          letterSpacing: 0.3,
         ),
       ),
     );
