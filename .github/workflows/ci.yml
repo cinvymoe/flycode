@@ -8,10 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       build_release:
-        description: 'Build release APK'
+        description: 'Build release APK and create pre-release'
         required: false
         default: 'false'
         type: boolean
+
+permissions:
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -139,7 +142,59 @@ jobs:
       - name: 🏗️ Build web
         run: flutter build web
 
+      - name: 📦 Package web build (for release)
+        if: ${{ inputs.build_release == 'true' }}
+        run: |
+          cd build/web
+          tar -czf ../../flycode-web.tar.gz .
+          cd ../..
+
       - uses: actions/upload-artifact@v4
         with:
           name: web-build
           path: build/web/
+
+  prerelease:
+    name: 🏷️ Create Pre-release
+    runs-on: ubuntu-latest
+    needs: [build-android, build-web]
+    if: ${{ inputs.build_release == 'true' }}
+    steps:
+      - name: 📂 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📥 Download Android artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: apk
+          path: release-artifacts/
+
+      - name: 📥 Download Web artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: web-staging/
+
+      - name: 📦 Package web build
+        run: |
+          cd web-staging
+          tar -czf ../release-artifacts/flycode-web.tar.gz .
+          cd ..
+
+      - name: 📋 List release artifacts
+        run: ls -lh release-artifacts/
+
+      - name: 🏷️ Create Pre-release
+        uses: ncipollo/release-action@v1.16.0
+        with:
+          tag: ci-${{ github.ref_name }}-${{ github.run_number }}
+          name: "CI Build #${{ github.run_number }} (${{ github.ref_name }})"
+          artifacts: release-artifacts/*
+          prerelease: true
+          body: |
+            Automated pre-release build from CI.
+
+            - Branch: `${{ github.ref_name }}`
+            - Commit: `${{ github.sha }}`
+            - Run: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          token: ${{ secrets.GITHUB_TOKEN }}
