@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/l10n.dart';
-import '../models/chat_route_args.dart';
 import '../service/api/models/project.dart';
 import '../service/api/api_client.dart';
 import '../providers/current_directory_provider.dart';
@@ -136,7 +135,7 @@ Future<void> _showProjectActionMenu(
 
 void _openProjectChat(BuildContext context, WidgetRef ref, Project project) {
   ref.read(currentDirectoryProvider.notifier).set(project.worktree);
-  context.push('/chat', extra: ChatRouteArgs(directory: project.worktree));
+  context.push('/sessions', extra: project.worktree);
 }
 
 class ProjectListPage extends ConsumerWidget {

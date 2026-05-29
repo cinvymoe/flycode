@@ -195,6 +195,11 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
           actions: [
             if (selectedSession != null) ...[
               _HeaderActionButton(
+                icon: Icons.source_outlined,
+                tooltip: l10n.gitFilesTitle,
+                onTap: () => context.pushGitFiles(),
+              ),
+              _HeaderActionButton(
                 icon: Icons.difference_outlined,
                 tooltip: l10n.homeTooltipFileDiff,
                 onTap: () => context.pushSessionDiffById(selectedSession.id),

@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/l10n.dart';
-import '../../models/chat_route_args.dart';
 import '../../providers/current_directory_provider.dart';
 import '../../service/api/api_client.dart';
 import '../../service/api/file_api.dart';
@@ -390,10 +389,7 @@ class _OpenProjectSheetState extends ConsumerState<_OpenProjectSheet> {
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        context.push(
-          '/chat',
-          extra: ChatRouteArgs(directory: project.worktree),
-        );
+        context.push('/sessions', extra: project.worktree);
       });
     } catch (e) {
       if (!mounted) return;
