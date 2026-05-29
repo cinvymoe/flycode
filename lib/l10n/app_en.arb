@@ -413,5 +413,34 @@
       }
     }
   },
-  "sessionCompletedNotificationBodyWithoutTitle": "A session has completed"
+  "sessionCompletedNotificationBodyWithoutTitle": "A session has completed",
+  "sessionErrorNotificationTitle": "Session error",
+  "sessionErrorNotificationBodyWithTitle": "{title} encountered an error",
+  "@sessionErrorNotificationBodyWithTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionErrorNotificationBodyWithoutTitle": "A session encountered an error",
+  "commandSourceSkill": "Skill",
+  "commandSourceCommand": "Cmd",
+  "commandSourceMcp": "MCP",
+  "gitFilesTitle": "Git Files",
+  "gitFilesEmptyTitle": "No changes",
+  "gitFilesEmptySubtitle": "No file changes detected in the current project",
+  "gitFilesLoadFailed": "Failed to load git file status",
+  "gitFilesCount": "{count} files changed",
+  "@gitFilesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitFilesStatusAdded": "added",
+  "gitFilesStatusDeleted": "deleted",
+  "gitFilesStatusModified": "modified",
+  "sessionListNewSession": "New Session"
 }

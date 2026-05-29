@@ -413,5 +413,34 @@
       }
     }
   },
-  "sessionCompletedNotificationBodyWithoutTitle": "有一个会话已完成"
+  "sessionCompletedNotificationBodyWithoutTitle": "有一个会话已完成",
+  "sessionErrorNotificationTitle": "会话出错",
+  "sessionErrorNotificationBodyWithTitle": "{title} 遇到错误",
+  "@sessionErrorNotificationBodyWithTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionErrorNotificationBodyWithoutTitle": "有一个会话遇到错误",
+  "commandSourceSkill": "Skill",
+  "commandSourceCommand": "命令",
+  "commandSourceMcp": "MCP",
+  "gitFilesTitle": "Git 文件",
+  "gitFilesEmptyTitle": "暂无变更",
+  "gitFilesEmptySubtitle": "当前项目未检测到文件变更",
+  "gitFilesLoadFailed": "加载 Git 文件状态失败",
+  "gitFilesCount": "{count} 个文件变更",
+  "@gitFilesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitFilesStatusAdded": "新增",
+  "gitFilesStatusDeleted": "删除",
+  "gitFilesStatusModified": "修改",
+  "sessionListNewSession": "新建会话"
 }
