@@ -21,3 +21,7 @@ class SessionContextRouteArgs {
 
   final String sessionID;
 }
+
+class GitFilesRouteArgs {
+  const GitFilesRouteArgs();
+}
