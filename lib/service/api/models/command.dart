@@ -7,6 +7,9 @@ class Command {
   final String? agent;
   final String? model;
   final bool? mcp;
+
+  /// Origin of this command: "command", "mcp", or "skill".
+  final String? source;
   final String template;
   final bool? subtask;
   final List<String> hints;
@@ -17,6 +20,7 @@ class Command {
     this.agent,
     this.model,
     this.mcp,
+    this.source,
     required this.template,
     this.subtask,
     required this.hints,
@@ -28,6 +32,7 @@ class Command {
     agent: json['agent'] as String?,
     model: json['model'] as String?,
     mcp: json['mcp'] as bool?,
+    source: json['source'] as String?,
     template: json['template'] as String,
     subtask: json['subtask'] as bool?,
     hints: (json['hints'] as List<dynamic>).map((e) => e as String).toList(),
@@ -39,6 +44,7 @@ class Command {
     if (agent != null) 'agent': agent,
     if (model != null) 'model': model,
     if (mcp != null) 'mcp': mcp,
+    if (source != null) 'source': source,
     'template': template,
     if (subtask != null) 'subtask': subtask,
     'hints': hints,
