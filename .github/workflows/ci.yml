@@ -9,9 +9,12 @@ on:
     inputs:
       build_release:
         description: 'Build release APK and create pre-release'
-        required: false
+        required: true
+        type: choice
+        options:
+          - 'false'
+          - 'true'
         default: 'false'
-        type: boolean
 
 permissions:
   contents: write
