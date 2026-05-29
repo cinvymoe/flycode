@@ -25,6 +25,7 @@ import '../../providers/permission_provider.dart';
 import '../../providers/session_status_provider.dart';
 import '../../providers/session_unread_provider.dart';
 import '../../providers/model_variant_provider.dart';
+import '../../providers/skill_provider.dart';
 import '../../service/api/models/agent.dart';
 import '../../service/api/models/provider.dart';
 import '../../service/api/models/permission.dart';
@@ -805,6 +806,17 @@ class ChatInputState extends ConsumerState<ChatInput> {
     );
   }
 
+  void _showSkillSelector() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(
+        context,
+      ).colorScheme.surface.withValues(alpha: 0),
+      builder: (context) => const _SkillSelectionSheet(),
+    );
+  }
+
   void _showModelSelector() {
     showModalBottomSheet(
       context: context,
@@ -931,12 +943,21 @@ class ChatInputState extends ConsumerState<ChatInput> {
               showVariantSelector: variantState.available.isNotEmpty,
               variantLabel: _formatVariantLabel(variantState.current),
               agents: ref.watch(agentsProvider).asData?.value ?? const [],
+              skillCount:
+                  ref
+                      .watch(skillProvider)
+                      .asData
+                      ?.value
+                      .where((s) => s.enabled)
+                      .length ??
+                  0,
               onAgentTap: _handleAgentTap,
               onShowModelSelector: _showModelSelector,
               onShowVariantSelector: () => _showVariantSelector(variantState),
               onCycleVariant: () {
                 ref.read(modelVariantProvider.notifier).cycleForCurrentModel();
               },
+              onShowSkillSelector: _showSkillSelector,
               onShowSessionHistory: _showSessionHistorySheet,
               onStartNewSession: _startPendingSession,
             ),
@@ -984,6 +1005,7 @@ class ChatInputState extends ConsumerState<ChatInput> {
                       focusedErrorBorder: InputBorder.none,
                     ),
                     onSubmitted: (_) => _handleSend(),
+                    onChanged: (_) => _onTextChanged(),
                   ),
                   _InputToolBar(
                     isLoading: _isLoading,
@@ -1251,10 +1273,12 @@ class _ConfigToolBar extends StatelessWidget {
   final bool showVariantSelector;
   final String variantLabel;
   final List<Agent> agents;
+  final int skillCount;
   final ValueChanged<List<Agent>> onAgentTap;
   final VoidCallback onShowModelSelector;
   final VoidCallback onShowVariantSelector;
   final VoidCallback onCycleVariant;
+  final VoidCallback onShowSkillSelector;
   final VoidCallback onShowSessionHistory;
   final VoidCallback onStartNewSession;
 
@@ -1264,10 +1288,12 @@ class _ConfigToolBar extends StatelessWidget {
     required this.showVariantSelector,
     required this.variantLabel,
     required this.agents,
+    required this.skillCount,
     required this.onAgentTap,
     required this.onShowModelSelector,
     required this.onShowVariantSelector,
     required this.onCycleVariant,
+    required this.onShowSkillSelector,
     required this.onShowSessionHistory,
     required this.onStartNewSession,
   });
@@ -1296,6 +1322,13 @@ class _ConfigToolBar extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 _SelectionChip(onTap: onShowModelSelector, label: modelLabel),
+                if (skillCount > 0) ...[
+                  const SizedBox(width: 8),
+                  _SelectionChip(
+                    onTap: onShowSkillSelector,
+                    label: 'Skill ($skillCount)',
+                  ),
+                ],
                 if (showVariantSelector) ...[
                   const SizedBox(width: 8),
                   _SelectionChip(
@@ -2122,6 +2155,274 @@ class _AtFileSuggestionList extends StatelessWidget {
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Skill 选择底部弹窗 ──────────────────────────────────────────
+
+class _SkillSelectionSheet extends ConsumerStatefulWidget {
+  const _SkillSelectionSheet();
+
+  @override
+  ConsumerState<_SkillSelectionSheet> createState() =>
+      _SkillSelectionSheetState();
+}
+
+class _SkillSelectionSheetState extends ConsumerState<_SkillSelectionSheet> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tokens = context.tokens;
+    final maxSheetHeight = MediaQuery.of(context).size.height * 0.72;
+    final skillsAsync = ref.watch(skillProvider);
+
+    return Container(
+      constraints: BoxConstraints(maxHeight: maxSheetHeight),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(tokens.radiusM + 2),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 10, bottom: 8),
+                width: 56,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.secondary,
+                  borderRadius: BorderRadius.circular(tokens.radiusPill),
+                ),
+              ),
+            ),
+            // Header
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                tokens.pageHorizontalPadding,
+                6,
+                10,
+                10,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      context.l10n.skillSelectionTitle,
+                      style: TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close, color: theme.colorScheme.onSurface),
+                    onPressed: () => Navigator.pop(context),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+            ),
+            // Search field
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: tokens.pageHorizontalPadding,
+              ),
+              child: TextField(
+                onChanged: (value) =>
+                    setState(() => _searchQuery = value.toLowerCase()),
+                decoration: InputDecoration(
+                  hintText: context.l10n.skillSelectionSearchHint,
+                  hintStyle: TextStyle(
+                    color: tokens.mutedForeground,
+                    fontSize: 14,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    size: 20,
+                    color: tokens.mutedForeground,
+                  ),
+                  filled: true,
+                  fillColor: tokens.card,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(tokens.radiusXs),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(tokens.radiusXs),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(tokens.radiusXs),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Divider(height: 1, color: tokens.border.withValues(alpha: 0.5)),
+            // Skill list
+            Flexible(
+              child: skillsAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      '$error',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: tokens.mutedForeground),
+                    ),
+                  ),
+                ),
+                data: (skills) {
+                  var filtered = skills;
+                  if (_searchQuery.isNotEmpty) {
+                    filtered = skills
+                        .where(
+                          (s) =>
+                              s.command.name.toLowerCase().contains(
+                                _searchQuery,
+                              ) ||
+                              (s.command.description?.toLowerCase().contains(
+                                    _searchQuery,
+                                  ) ??
+                                  false),
+                        )
+                        .toList();
+                  }
+
+                  if (filtered.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 32),
+                        child: Text(
+                          context.l10n.skillSelectionNoSkills,
+                          style: TextStyle(color: tokens.mutedForeground),
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
+                    itemCount: filtered.length,
+                    itemBuilder: (ctx, i) {
+                      final record = filtered[i];
+                      final skill = record.command;
+                      final isEnabled = record.enabled;
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Material(
+                          color: isEnabled
+                              ? theme.colorScheme.primary.withValues(
+                                  alpha: 0.08,
+                                )
+                              : tokens.card.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(tokens.radiusM),
+                          child: InkWell(
+                            onTap: () {
+                              ref
+                                  .read(skillProvider.notifier)
+                                  .toggleSkill(skill.name);
+                            },
+                            borderRadius: BorderRadius.circular(tokens.radiusM),
+                            splashColor: theme.colorScheme.primary.withValues(
+                              alpha: 0.08,
+                            ),
+                            highlightColor: theme.colorScheme.primary
+                                .withValues(alpha: 0.05),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '/${skill.name}',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: isEnabled
+                                                ? FontWeight.w700
+                                                : FontWeight.w600,
+                                            color: isEnabled
+                                                ? theme.colorScheme.primary
+                                                : theme.colorScheme.onSurface,
+                                          ),
+                                        ),
+                                        if (skill.description != null &&
+                                            skill.description!.isNotEmpty)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              top: 2,
+                                            ),
+                                            child: Text(
+                                              skill.description!,
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: tokens.mutedForeground,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Switch(
+                                    value: isEnabled,
+                                    onChanged: (value) {
+                                      ref
+                                          .read(
+                                            skillProvider.notifier,
+                                          )
+                                          .setSkillEnabled(
+                                            skill.name,
+                                            value,
+                                          );
+                                    },
+                                    activeThumbColor:
+                                        theme.colorScheme.primary,
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
