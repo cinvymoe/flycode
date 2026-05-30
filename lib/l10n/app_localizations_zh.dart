@@ -662,6 +662,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitFilesStatusModified => '修改';
 
   @override
+  String get gitFilesDiffLoading => '加载 Diff...';
+
+  @override
+  String get gitFilesDiffNoChanges => '暂无 Diff';
+
+  @override
+  String get gitFilesDiffLoadFailed => '加载 Diff 失败';
+
+  @override
+  String get gitFilesViewFile => '查看文件';
+
+  @override
   String get sessionListNewSession => '新建会话';
 
   @override

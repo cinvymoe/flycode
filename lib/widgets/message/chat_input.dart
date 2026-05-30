@@ -59,7 +59,6 @@ class ChatInput extends ConsumerStatefulWidget {
 class ChatInputState extends ConsumerState<ChatInput> {
   final AtMentionController _controller = AtMentionController();
   final FocusNode _focusNode = FocusNode();
-  bool _isLoading = false;
   bool _isHandlingPaste = false;
 
   /// True while an abort request has been sent and we are waiting for the
@@ -539,77 +538,119 @@ class ChatInputState extends ConsumerState<ChatInput> {
     final shellCommand = isShellMode ? _normalizeShellCommand(text) : text;
     if (isShellMode && shellCommand.isEmpty) return;
     if (!isShellMode && text.isEmpty && _attachments.isEmpty) return;
-    if (_isLoading) return;
 
     final chatState = ref.read(chatViewStateProvider);
     if (chatState.sessionId == null && !chatState.isPending) return;
 
-    setState(() => _isLoading = true);
+    // Use cached commands data (non-blocking) instead of awaiting
+    // commandsProvider.future which can block if commands are still loading.
+    final matchedCommand = isShellMode ? null : _parseCommand(text);
 
-    try {
-      final api = await ref.read(sessionApiProvider.future);
-      final directory = ref.read(currentDirectoryProvider);
-      final chatConfig = ref.read(chatConfigProvider);
-      final variant = ref.read(modelVariantProvider).current;
+    // Capture state needed for dispatch before clearing input.
+    final api = await ref.read(sessionApiProvider.future);
+    final directory = ref.read(currentDirectoryProvider);
+    final chatConfig = ref.read(chatConfigProvider);
+    final variant = ref.read(modelVariantProvider).current;
 
-      final sessionId = await _ensureSession(api, directory, chatState);
-      if (sessionId == null) return;
+    final sessionId = await _ensureSession(api, directory, chatState);
+    if (sessionId == null) return;
 
-      if (isShellMode) {
-        await _dispatchShell(
-          api,
-          sessionId,
-          directory,
-          chatConfig,
-          shellCommand,
-          variant,
-        );
-      } else {
-        // Ensure commands are loaded before parsing so that skill commands
-        // (e.g. "/review") are correctly dispatched via sendCommand instead
-        // of falling through to sendPromptAsync as plain text.
-        await ref.read(commandsProvider.future);
-        final matchedCommand = _parseCommand(text);
-        if (matchedCommand != null) {
-          await _dispatchCommand(
-            api,
-            sessionId,
-            directory,
-            chatConfig,
-            variant,
-            matchedCommand,
-            text,
-          );
-        } else {
-          await _dispatchPrompt(
-            api,
-            sessionId,
-            directory,
-            chatConfig,
-            variant,
-            text,
-          );
-        }
-      }
+    // Build attachment/file parts before clearing input (they reference
+    // _controller.pills and _attachments).
+    final attachmentParts = isShellMode
+        ? <FilePartInput>[]
+        : await _buildAttachmentParts();
+    final fileParts = isShellMode
+        ? <FilePartInput>[]
+        : _buildFileParts(directory ?? '');
 
-      setState(() {
-        _controller.clear();
-        _controller.pills.clear();
-        _attachments.clear();
+    // Optimistically clear input — matching the web client pattern which
+    // clears first then fires the request.  On failure we restore below.
+    final savedText = text;
+    final savedPills = List<FilePill>.from(_controller.pills);
+    final savedAttachments = List<_ImageAttachment>.from(_attachments);
+    setState(() {
+      _controller.clear();
+      _controller.pills.clear();
+      _attachments.clear();
+    });
+
+    // Fire the request.  Command & shell dispatches are intentionally
+    // non-blocking (fire-and-forget with error toast) — matching the web
+    // client which does not await these calls.  The backend's /command
+    // endpoint is synchronous and can take a long time for skill execution;
+    // awaiting it would keep _isLoading = true and block the UI.
+    if (isShellMode) {
+      _dispatchShell(
+        api,
+        sessionId,
+        directory,
+        chatConfig,
+        shellCommand,
+        variant,
+      ).catchError((Object e) {
+        _restoreInput(savedText, savedPills, savedAttachments);
+        _showSendError(e);
+        return null;
       });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(context.l10n.chatInputSendError(e.toString())),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+    } else if (matchedCommand != null) {
+      _dispatchCommand(
+        api,
+        sessionId,
+        directory,
+        chatConfig,
+        variant,
+        matchedCommand,
+        text,
+        attachmentParts: attachmentParts,
+      ).catchError((Object e) {
+        _restoreInput(savedText, savedPills, savedAttachments);
+        _showSendError(e);
+        return null;
+      });
+    } else {
+      _dispatchPrompt(
+        api,
+        sessionId,
+        directory,
+        chatConfig,
+        variant,
+        text,
+        attachmentParts: attachmentParts,
+        fileParts: fileParts,
+      ).catchError((Object e) {
+        _restoreInput(savedText, savedPills, savedAttachments);
+        _showSendError(e);
+        return null;
+      });
     }
+  }
+
+  void _restoreInput(
+    String text,
+    List<FilePill> pills,
+    List<_ImageAttachment> attachments,
+  ) {
+    if (!mounted) return;
+    setState(() {
+      _controller.value = TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      );
+      _controller.pills
+        ..clear()
+        ..addAll(pills);
+      _attachments
+        ..clear()
+        ..addAll(attachments);
+    });
+  }
+
+  void _showSendError(Object e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.l10n.chatInputSendError(e.toString()))),
+    );
   }
 
   /// Sends an abort request to the backend for the current session.
@@ -651,6 +692,31 @@ class ChatInputState extends ConsumerState<ChatInput> {
     return sessionId;
   }
 
+  /// Build file parts from @ pills using the given root directory.
+  /// Extracted so we can capture parts *before* clearing the input.
+  List<FilePartInput> _buildFileParts(String rootDir) {
+    return _controller.pills.map((pill) {
+      final rel = pill.path;
+      final absPath = rootDir.isNotEmpty
+          ? '$rootDir/$rel'.replaceAll('//', '/')
+          : rel;
+      return FilePartInput(
+        mime: 'text/plain',
+        url: 'file://$absPath',
+        filename: rel.split('/').last,
+        source: {
+          'type': 'file',
+          'path': absPath,
+          'text': {
+            'value': pill.displayText,
+            'start': pill.start,
+            'end': pill.end,
+          },
+        },
+      );
+    }).toList();
+  }
+
   Future<void> _dispatchCommand(
     SessionApi api,
     String sessionId,
@@ -658,8 +724,9 @@ class ChatInputState extends ConsumerState<ChatInput> {
     ChatConfig chatConfig,
     String? variant,
     Command matchedCommand,
-    String text,
-  ) async {
+    String text, {
+    List<FilePartInput> attachmentParts = const [],
+  }) async {
     final afterSlash = text.substring(1);
     final spaceIdx = afterSlash.indexOf(' ');
     final arguments = spaceIdx == -1
@@ -711,34 +778,10 @@ class ChatInputState extends ConsumerState<ChatInput> {
     String? directory,
     ChatConfig chatConfig,
     String? variant,
-    String text,
-  ) async {
-    final rootDir = directory ?? '';
-
-    // Build file parts from @ pills.
-    final fileParts = _controller.pills.map((pill) {
-      final rel = pill.path;
-      final absPath = rootDir.isNotEmpty
-          ? '$rootDir/$rel'.replaceAll('//', '/')
-          : rel;
-      return FilePartInput(
-        mime: 'text/plain',
-        url: 'file://$absPath',
-        filename: rel.split('/').last,
-        source: {
-          'type': 'file',
-          'path': absPath,
-          'text': {
-            'value': pill.displayText,
-            'start': pill.start,
-            'end': pill.end,
-          },
-        },
-      );
-    }).toList();
-
-    final attachmentParts = await _buildAttachmentParts();
-
+    String text, {
+    List<FilePartInput> attachmentParts = const [],
+    List<FilePartInput> fileParts = const [],
+  }) async {
     final List<Object> parts = [
       if (text.isNotEmpty) TextPartInput(text: text),
       ...fileParts,
@@ -1042,7 +1085,6 @@ class ChatInputState extends ConsumerState<ChatInput> {
                     onChanged: (_) => _onTextChanged(),
                   ),
                   _InputToolBar(
-                    isLoading: _isLoading,
                     isWorking: isWorking,
                     isAborting: _isAborting,
                     isShellMode: isShellMode,
@@ -1199,7 +1241,6 @@ class _AttachmentList extends StatelessWidget {
 }
 
 class _InputToolBar extends StatelessWidget {
-  final bool isLoading;
   final bool isWorking;
   final bool isAborting;
   final bool isShellMode;
@@ -1208,7 +1249,6 @@ class _InputToolBar extends StatelessWidget {
   final VoidCallback onAbort;
 
   const _InputToolBar({
-    required this.isLoading,
     required this.isWorking,
     required this.isAborting,
     required this.isShellMode,
@@ -1220,7 +1260,7 @@ class _InputToolBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool showStop = isWorking || isAborting;
-    final bool actionDisabled = isAborting || isLoading;
+    final bool actionDisabled = isAborting;
     final theme = Theme.of(context);
     final tokens = context.tokens;
 
@@ -1242,14 +1282,14 @@ class _InputToolBar extends StatelessWidget {
             children: [
               if (!isShellMode)
                 InkWell(
-                  onTap: (isLoading || isWorking) ? null : onPickImage,
+                  onTap: isWorking ? null : onPickImage,
                   borderRadius: BorderRadius.circular(4),
                   child: Padding(
                     padding: const EdgeInsets.all(2),
                     child: Icon(
                       Icons.add,
                       size: 18,
-                      color: (isLoading || isWorking)
+                      color: isWorking
                           ? tokens.mutedForeground.withValues(alpha: 0.5)
                           : tokens.mutedForeground,
                     ),
@@ -1270,7 +1310,7 @@ class _InputToolBar extends StatelessWidget {
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      if (isLoading || isAborting)
+                      if (isAborting)
                         SizedBox(
                           width: 14,
                           height: 14,

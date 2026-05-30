@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/l10n.dart';
+import '../providers/file_provider.dart';
 import '../providers/file_status_provider.dart';
 import '../route_navigation.dart';
 import '../service/api/models/file_status.dart';
 import '../theme/app_tokens.dart';
+import '../widgets/message/diff_view.dart';
 
 class GitFilesPage extends ConsumerWidget {
   const GitFilesPage({super.key});
@@ -176,12 +178,12 @@ class _FileListView extends StatelessWidget {
   }
 }
 
-class _FileStatusTile extends StatelessWidget {
+class _FileStatusTile extends ConsumerWidget {
   const _FileStatusTile({required this.file});
   final FileStatus file;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final tokens = context.tokens;
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -208,21 +210,15 @@ class _FileStatusTile extends StatelessWidget {
         ? file.path.substring(0, file.path.length - fileName.length)
         : null;
 
-    return InkWell(
-      onTap: file.isDeleted
-          ? null
-          : () => context.pushFileContentByPath(file.path),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: tokens.border.withValues(alpha: 0.4)),
-          ),
-        ),
-        child: Row(
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        enabled: !file.isDeleted,
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        childrenPadding: EdgeInsets.zero,
+        leading: Icon(icon, size: 18, color: color),
+        title: Row(
           children: [
-            Icon(icon, size: 18, color: color),
-            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -258,7 +254,11 @@ class _FileStatusTile extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
@@ -278,8 +278,50 @@ class _FileStatusTile extends StatelessWidget {
               const SizedBox(width: 6),
               _DiffStatChip(additions: file.added, deletions: file.removed),
             ],
+            if (!file.isDeleted) ...[
+              const SizedBox(width: 6),
+              GestureDetector(
+                onTap: () => context.pushFileContentByPath(file.path),
+                child: Tooltip(
+                  message: context.l10n.gitFilesViewFile,
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: tokens.accent,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Icon(
+                      Icons.visibility_outlined,
+                      size: 15,
+                      color: tokens.mutedForeground,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(width: 4),
+            if (!file.isDeleted)
+              Icon(
+                Icons.expand_more_rounded,
+                size: 18,
+                color: tokens.mutedForeground,
+              ),
           ],
         ),
+        expandedAlignment: Alignment.topLeft,
+        children: [
+          if (file.isDeleted)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Text(
+                'No changes',
+                style: TextStyle(fontSize: 12, color: tokens.mutedForeground),
+              ),
+            )
+          else
+            _InlineDiffContent(filePath: file.path),
+        ],
       ),
     );
   }
@@ -288,6 +330,116 @@ class _FileStatusTile extends StatelessWidget {
     final normalized = path.replaceAll('\\', '/');
     final parts = normalized.split('/');
     return parts.lastWhere((p) => p.isNotEmpty, orElse: () => path);
+  }
+}
+
+class _InlineDiffContent extends ConsumerWidget {
+  const _InlineDiffContent({required this.filePath});
+  final String filePath;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
+    final contentAsync = ref.watch(fileContentProvider(filePath));
+
+    return contentAsync.when(
+      loading: () => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        child: Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: tokens.mutedForeground,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                context.l10n.gitFilesDiffLoading,
+                style: TextStyle(fontSize: 13, color: tokens.mutedForeground),
+              ),
+            ],
+          ),
+        ),
+      ),
+      error: (error, _) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(
+              Icons.error_outline_rounded,
+              size: 16,
+              color: tokens.errorSoftForeground,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                context.l10n.gitFilesDiffLoadFailed,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: tokens.errorSoftForeground,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+      data: (content) {
+        if (content.patch != null) {
+          return Padding(
+            padding: const EdgeInsets.only(
+              left: 16,
+              right: 16,
+              bottom: 12,
+              top: 4,
+            ),
+            child: PatchDiffView(patch: content.patch!, fileName: filePath),
+          );
+        }
+
+        if (content.diff != null && content.diff!.isNotEmpty) {
+          return Padding(
+            padding: const EdgeInsets.only(
+              left: 16,
+              right: 16,
+              bottom: 12,
+              top: 4,
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: tokens.card,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: tokens.border.withValues(alpha: 0.8)),
+              ),
+              child: SelectableText(
+                content.diff!,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontFamily: 'monospace',
+                  height: 1.5,
+                ),
+              ),
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Text(
+            context.l10n.gitFilesDiffNoChanges,
+            style: TextStyle(fontSize: 12, color: tokens.mutedForeground),
+          ),
+        );
+      },
+    );
   }
 }
 

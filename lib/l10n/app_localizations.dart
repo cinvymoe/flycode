@@ -1268,6 +1268,30 @@ abstract class AppLocalizations {
   /// **'modified'**
   String get gitFilesStatusModified;
 
+  /// No description provided for @gitFilesDiffLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading diff...'**
+  String get gitFilesDiffLoading;
+
+  /// No description provided for @gitFilesDiffNoChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'No diff available'**
+  String get gitFilesDiffNoChanges;
+
+  /// No description provided for @gitFilesDiffLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load diff'**
+  String get gitFilesDiffLoadFailed;
+
+  /// No description provided for @gitFilesViewFile.
+  ///
+  /// In en, this message translates to:
+  /// **'View file'**
+  String get gitFilesViewFile;
+
   /// No description provided for @sessionListNewSession.
   ///
   /// In en, this message translates to:

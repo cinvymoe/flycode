@@ -687,6 +687,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitFilesStatusModified => 'modified';
 
   @override
+  String get gitFilesDiffLoading => 'Loading diff...';
+
+  @override
+  String get gitFilesDiffNoChanges => 'No diff available';
+
+  @override
+  String get gitFilesDiffLoadFailed => 'Failed to load diff';
+
+  @override
+  String get gitFilesViewFile => 'View file';
+
+  @override
   String get sessionListNewSession => 'New Session';
 
   @override

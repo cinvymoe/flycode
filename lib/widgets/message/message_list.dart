@@ -44,20 +44,26 @@ class MessageList extends ConsumerWidget {
         }
         return MessageErrorState(message: l10n.messageListLoadFailed);
       },
-      data: (messages) => Column(
-        children: [
-          RevertedBanner(sessionID: sessionID),
-          Expanded(
-            child: _MessageListBody(
-              messages: messages,
-              onNavigateToSubSession: onNavigateToSubSession,
-              sessionID: sessionID,
-              isWorking: isWorking,
-              isReverted: isReverted,
+      data: (messages) {
+        final revert = ref.watch(currentSessionRevertProvider);
+        final visibleMessages = revert != null
+            ? _filterMessagesAfterRevert(messages, revert.messageID)
+            : messages;
+        return Column(
+          children: [
+            RevertedBanner(sessionID: sessionID),
+            Expanded(
+              child: _MessageListBody(
+                messages: visibleMessages,
+                onNavigateToSubSession: onNavigateToSubSession,
+                sessionID: sessionID,
+                isWorking: isWorking,
+                isReverted: isReverted,
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 }
@@ -482,6 +488,18 @@ String _messageId(MessageWithParts message) {
     return info.id;
   }
   return info.hashCode.toString();
+}
+
+/// 过滤回退点之后的消息：只保留 revertMessageID 及之前的消息
+List<MessageWithParts> _filterMessagesAfterRevert(
+  List<MessageWithParts> messages,
+  String revertMessageID,
+) {
+  final revertIndex = messages.indexWhere(
+    (m) => _messageId(m) == revertMessageID,
+  );
+  if (revertIndex < 0) return messages;
+  return messages.sublist(0, revertIndex + 1);
 }
 
 bool _isSyntheticOnlyUserMessage(MessageWithParts message) {
