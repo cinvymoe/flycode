@@ -8,6 +8,7 @@ import '../l10n/l10n.dart';
 import '../providers/file_provider.dart';
 import '../service/api/models/file_content.dart';
 import '../theme/app_tokens.dart';
+import '../widgets/message/diff_view.dart';
 
 // ──────────────────────────────────────────────
 // 工具函数
@@ -38,18 +39,29 @@ String _formatBytes(int bytes) {
 // 页面入口
 // ──────────────────────────────────────────────
 
-class FileContentPage extends ConsumerWidget {
+class FileContentPage extends ConsumerStatefulWidget {
   const FileContentPage({super.key, required this.filePath});
 
   final String filePath;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final fileName = _fileName(filePath);
-    final contentAsync = ref.watch(fileContentProvider(filePath));
+  ConsumerState<FileContentPage> createState() => _FileContentPageState();
+}
+
+class _FileContentPageState extends ConsumerState<FileContentPage> {
+  bool _showDiff = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final fileName = _fileName(widget.filePath);
+    final contentAsync = ref.watch(fileContentProvider(widget.filePath));
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final tokens = context.tokens;
+
+    final canShowDiff = contentAsync.hasValue &&
+        !contentAsync.value!.isBinary &&
+        (contentAsync.value!.diff != null || contentAsync.value!.patch != null);
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -62,9 +74,9 @@ class FileContentPage extends ConsumerWidget {
               fileName,
               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
             ),
-            if (filePath != fileName)
+            if (widget.filePath != fileName)
               Text(
-                filePath,
+                widget.filePath,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -87,6 +99,20 @@ class FileContentPage extends ConsumerWidget {
           ),
         ),
         actions: [
+          if (canShowDiff)
+            IconButton(
+              icon: Icon(
+                _showDiff
+                    ? Icons.code_rounded
+                    : Icons.difference_outlined,
+                size: 18,
+                color: _showDiff
+                    ? colorScheme.primary
+                    : tokens.mutedForeground,
+              ),
+              tooltip: context.l10n.fileContentDiffToggle,
+              onPressed: () => setState(() => _showDiff = !_showDiff),
+            ),
           if (contentAsync.hasValue && !contentAsync.value!.isBinary)
             IconButton(
               icon: Icon(
@@ -114,7 +140,11 @@ class FileContentPage extends ConsumerWidget {
       body: contentAsync.when(
         loading: () => const _SkeletonLoader(),
         error: (error, _) => _ErrorView(error: error),
-        data: (fc) => _ContentView(filePath: filePath, content: fc),
+        data: (fc) => _ContentView(
+          filePath: widget.filePath,
+          content: fc,
+          showDiff: _showDiff,
+        ),
       ),
     );
   }
@@ -259,10 +289,15 @@ class _ErrorView extends StatelessWidget {
 // ──────────────────────────────────────────────
 
 class _ContentView extends StatelessWidget {
-  const _ContentView({required this.filePath, required this.content});
+  const _ContentView({
+    required this.filePath,
+    required this.content,
+    required this.showDiff,
+  });
 
   final String filePath;
   final FileContent content;
+  final bool showDiff;
 
   @override
   Widget build(BuildContext context) {
@@ -270,9 +305,42 @@ class _ContentView extends StatelessWidget {
       return _BinaryUnsupportedView(mimeType: content.mimeType);
     }
 
+    if (showDiff) {
+      if (content.patch != null) {
+        final counts = _computePatchCounts(content.patch!);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _DiffInfoBar(
+              ext: _fileExtension(filePath),
+              additions: counts.additions,
+              deletions: counts.deletions,
+            ),
+            Expanded(child: _PatchDiffContentView(patch: content.patch!)),
+          ],
+        );
+      }
+      // Fallback: show raw diff text when patch is null but diff string exists
+      if (content.diff != null) {
+        final lines = _splitLines(content.diff!);
+        final ext = _fileExtension(filePath);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _FileInfoBar(
+              lineCount: lines.length,
+              ext: ext,
+              sizeBytes: content.diff!.length,
+            ),
+            Expanded(child: _TextContentView(lines: lines)),
+          ],
+        );
+      }
+    }
+
     final lines = _splitLines(content.content);
     final ext = _fileExtension(filePath);
-    final sizeBytes = content.content.length; // UTF-16 近似，足够展示用
+    final sizeBytes = content.content.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -281,6 +349,21 @@ class _ContentView extends StatelessWidget {
         Expanded(child: _TextContentView(lines: lines)),
       ],
     );
+  }
+
+  ({int additions, int deletions}) _computePatchCounts(FileContentPatch patch) {
+    int additions = 0;
+    int deletions = 0;
+    for (final hunk in patch.hunks) {
+      for (final line in hunk.lines) {
+        if (line.startsWith('+')) {
+          additions++;
+        } else if (line.startsWith('-')) {
+          deletions++;
+        }
+      }
+    }
+    return (additions: additions, deletions: deletions);
   }
 
   /// 按换行拆分，去掉末尾多余空行
@@ -363,6 +446,99 @@ class _FileInfoBar extends StatelessWidget {
             style: TextStyle(fontSize: 12, color: tokens.mutedForeground),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────
+// Diff 信息栏
+// ──────────────────────────────────────────────
+
+class _DiffInfoBar extends StatelessWidget {
+  const _DiffInfoBar({
+    required this.ext,
+    required this.additions,
+    required this.deletions,
+  });
+
+  final String ext;
+  final int additions;
+  final int deletions;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: tokens.accent,
+        border: Border(bottom: BorderSide(color: tokens.border)),
+      ),
+      child: Row(
+        children: [
+          // 语言标签
+          if (ext.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: tokens.border.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                ext,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: tokens.accentForeground,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+          ],
+          // +N additions
+          Text(
+            '+$additions',
+            style: TextStyle(
+              fontSize: 12,
+              color: tokens.successForeground,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'monospace',
+            ),
+          ),
+          const SizedBox(width: 10),
+          // -N deletions
+          Text(
+            '-$deletions',
+            style: TextStyle(
+              fontSize: 12,
+              color: tokens.errorSoftForeground,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'monospace',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────
+// Diff 内容视图（PatchDiffView 包装）
+// ──────────────────────────────────────────────
+
+class _PatchDiffContentView extends StatelessWidget {
+  const _PatchDiffContentView({required this.patch});
+
+  final FileContentPatch patch;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: SingleChildScrollView(
+        child: PatchDiffView(patch: patch),
       ),
     );
   }
