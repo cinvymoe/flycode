@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:json_annotation/json_annotation.dart';
 
 @JsonSerializable(createFactory: false, createToJson: false)
@@ -33,10 +35,33 @@ class Command {
     model: json['model'] as String?,
     mcp: json['mcp'] as bool?,
     source: json['source'] as String?,
-    template: json['template'] as String,
+    template: _parseTemplate(json['template']),
     subtask: json['subtask'] as bool?,
-    hints: (json['hints'] as List<dynamic>).map((e) => e as String).toList(),
+    hints: _parseHints(json['hints']),
   );
+
+  /// Parse template: server sends String for command/skill templates,
+  /// but may also send nested objects (Map) for MCP prompts or null —
+  /// flatten to a string representation gracefully.
+  static String _parseTemplate(dynamic value) {
+    if (value == null) return '';
+    if (value is String) return value;
+    if (value is Map) return jsonEncode(value);
+    return value.toString();
+  }
+
+  /// Parse hints: the server typically sends `List<String>`, but
+  /// individual items can also be Maps or other types — coerce
+  /// each element to String.
+  static List<String> _parseHints(dynamic value) {
+    if (value == null) return const [];
+    if (value is! List) return const [];
+    return value.cast<dynamic>().map((e) {
+      if (e is String) return e;
+      if (e is Map) return jsonEncode(e);
+      return e.toString();
+    }).toList();
+  }
 
   Map<String, dynamic> toJson() => {
     'name': name,

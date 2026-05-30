@@ -2295,10 +2295,10 @@ class _SkillSelectionSheetState extends ConsumerState<_SkillSelectionSheet> {
                     filtered = skills
                         .where(
                           (s) =>
-                              s.command.name.toLowerCase().contains(
+                              s.skill.name.toLowerCase().contains(
                                 _searchQuery,
                               ) ||
-                              (s.command.description?.toLowerCase().contains(
+                              (s.skill.description?.toLowerCase().contains(
                                     _searchQuery,
                                   ) ??
                                   false),
@@ -2324,7 +2324,7 @@ class _SkillSelectionSheetState extends ConsumerState<_SkillSelectionSheet> {
                     itemCount: filtered.length,
                     itemBuilder: (ctx, i) {
                       final record = filtered[i];
-                      final skill = record.command;
+                      final skill = record.skill;
                       final isEnabled = record.enabled;
 
                       return Padding(
