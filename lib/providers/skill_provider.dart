@@ -60,13 +60,16 @@ class SkillNotifier extends _$SkillNotifier {
     return _loadWithEnabledState(dao, skills);
   }
 
-  List<SkillRecord> _loadWithEnabledState(
+  Future<List<SkillRecord>> _loadWithEnabledState(
     SkillDao dao,
     List<Command> commands,
-  ) {
-    return commands
-        .map((cmd) => SkillRecord(command: cmd, enabled: true))
-        .toList();
+  ) async {
+    final records = <SkillRecord>[];
+    for (final cmd in commands) {
+      final enabled = await dao.isSkillEnabled(cmd.name);
+      records.add(SkillRecord(command: cmd, enabled: enabled));
+    }
+    return records;
   }
 
   Future<void> _syncFromServer() async {

@@ -109,7 +109,7 @@ final class SkillNotifierProvider
   SkillNotifier create() => SkillNotifier();
 }
 
-String _$skillNotifierHash() => r'9419b477ffabb22d954b2f4d76db6bdbb5328ad0';
+String _$skillNotifierHash() => r'8b9218c636cd2cef6672eb9db81bbbaf712bbb1d';
 
 abstract class _$SkillNotifier extends $AsyncNotifier<List<SkillRecord>> {
   FutureOr<List<SkillRecord>> build();
