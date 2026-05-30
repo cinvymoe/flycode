@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../database/database_helper.dart';
@@ -44,7 +42,7 @@ class SkillNotifier extends _$SkillNotifier {
     final cached = await dao.getAllSkills();
 
     // Kick off a background sync from server so cache stays fresh.
-    unawaited(_syncFromServer());
+    _syncFromServer();
 
     // If we have cached skills, return them immediately with their
     // enabled state from the local DB.
@@ -53,7 +51,7 @@ class SkillNotifier extends _$SkillNotifier {
     }
 
     // No cache yet — wait for the server sync to complete.
-    final serverSkills = await ref.read(commandsProvider.future);
+    final serverSkills = await ref.watch(commandsProvider.future);
     final skills = serverSkills.where((c) => c.source == 'skill').toList();
 
     if (skills.isNotEmpty) {
