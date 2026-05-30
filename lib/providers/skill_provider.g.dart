@@ -21,7 +21,7 @@ final class SkillDatabaseHelperProvider
         argument: null,
         retry: null,
         name: r'skillDatabaseHelperProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -49,7 +49,7 @@ final class SkillDatabaseHelperProvider
 }
 
 String _$skillDatabaseHelperHash() =>
-    r'9710b5a073a0881f81cf97a18c21c972c720b48a';
+    r'17199814e3672694c09b92a9ae31340cd42ca18d';
 
 @ProviderFor(skillDao)
 final skillDaoProvider = SkillDaoProvider._();
@@ -64,7 +64,7 @@ final class SkillDaoProvider
         argument: null,
         retry: null,
         name: r'skillDaoProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -83,7 +83,7 @@ final class SkillDaoProvider
   }
 }
 
-String _$skillDaoHash() => r'87069b8b3b95f330d8c9076de02e54f532936ff8';
+String _$skillDaoHash() => r'4d40f054183aef9d430b5f3e05d3f33a7b534e2e';
 
 @ProviderFor(SkillNotifier)
 final skillProvider = SkillNotifierProvider._();
@@ -109,7 +109,7 @@ final class SkillNotifierProvider
   SkillNotifier create() => SkillNotifier();
 }
 
-String _$skillNotifierHash() => r'f80450bab7fd7213e8c5e544ec2335a74048af37';
+String _$skillNotifierHash() => r'f8ffff052092e3f86d0e446676aac021eaca0e64';
 
 abstract class _$SkillNotifier extends $AsyncNotifier<List<SkillRecord>> {
   FutureOr<List<SkillRecord>> build();

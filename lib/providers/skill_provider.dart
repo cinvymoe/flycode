@@ -9,12 +9,12 @@ import '../service/api/models/command.dart';
 
 part 'skill_provider.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 DatabaseHelper skillDatabaseHelper(Ref ref) {
   return DatabaseHelper();
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<SkillDao> skillDao(Ref ref) async {
   final dbHelper = ref.watch(skillDatabaseHelperProvider);
   final db = await dbHelper.database;
@@ -49,54 +49,32 @@ class SkillNotifier extends _$SkillNotifier {
     // If we have cached skills, return them immediately with their
     // enabled state from the local DB.
     if (cached.isNotEmpty) {
-      return await _loadWithEnabledState(dao, cached);
+      return _loadWithEnabledState(dao, cached);
     }
 
     // No cache yet — wait for the server sync to complete.
     final serverSkills = await ref.read(commandsProvider.future);
     final skills = serverSkills.where((c) => c.source == 'skill').toList();
 
-    // Debug: log what the server actually returned so we can verify
-    // the source field values.
-    print('[SkillProvider] Server returned ${serverSkills.length} commands');
-    for (final c in serverSkills) {
-      print('[SkillProvider]  name=${c.name} source=${c.source}');
-    }
-    print('[SkillProvider] Filtered ${skills.length} skills');
-
     if (skills.isNotEmpty) {
       await dao.upsertSkills(skills);
     }
-    return await _loadWithEnabledState(dao, skills);
+    return _loadWithEnabledState(dao, skills);
   }
 
-  Future<List<SkillRecord>> _loadWithEnabledState(
+  List<SkillRecord> _loadWithEnabledState(
     SkillDao dao,
     List<Command> commands,
-  ) async {
-    final records = <SkillRecord>[];
-    for (final cmd in commands) {
-      final isEnabled = await dao.isSkillEnabled(cmd.name);
-      records.add(SkillRecord(command: cmd, enabled: isEnabled));
-    }
-    return records;
+  ) {
+    return commands
+        .map((cmd) => SkillRecord(command: cmd, enabled: true))
+        .toList();
   }
 
   Future<void> _syncFromServer() async {
     try {
       final serverSkills = await ref.read(commandsProvider.future);
       final skills = serverSkills.where((c) => c.source == 'skill').toList();
-
-      print(
-        '[SkillProvider._syncFromServer] Server returned ${serverSkills.length} commands',
-      );
-      for (final c in serverSkills) {
-        print(
-          '[SkillProvider._syncFromServer]  name=${c.name} source=${c.source}',
-        );
-      }
-      print('[SkillProvider._syncFromServer] Filtered ${skills.length} skills');
-
       final dao = await ref.read(skillDaoProvider.future);
 
       // Upsert all server skills into cache.
