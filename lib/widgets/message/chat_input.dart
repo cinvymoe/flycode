@@ -2398,16 +2398,10 @@ class _SkillSelectionSheetState extends ConsumerState<_SkillSelectionSheet> {
                                     value: isEnabled,
                                     onChanged: (value) {
                                       ref
-                                          .read(
-                                            skillProvider.notifier,
-                                          )
-                                          .setSkillEnabled(
-                                            skill.name,
-                                            value,
-                                          );
+                                          .read(skillProvider.notifier)
+                                          .setSkillEnabled(skill.name, value);
                                     },
-                                    activeThumbColor:
-                                        theme.colorScheme.primary,
+                                    activeThumbColor: theme.colorScheme.primary,
                                     materialTapTargetSize:
                                         MaterialTapTargetSize.shrinkWrap,
                                   ),
