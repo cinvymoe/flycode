@@ -1322,13 +1322,11 @@ class _ConfigToolBar extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 _SelectionChip(onTap: onShowModelSelector, label: modelLabel),
-                if (skillCount > 0) ...[
-                  const SizedBox(width: 8),
-                  _SelectionChip(
-                    onTap: onShowSkillSelector,
-                    label: 'Skill ($skillCount)',
-                  ),
-                ],
+                const SizedBox(width: 8),
+                _SelectionChip(
+                  onTap: skillCount > 0 ? onShowSkillSelector : null,
+                  label: skillCount > 0 ? 'Skill ($skillCount)' : 'Skill',
+                ),
                 if (showVariantSelector) ...[
                   const SizedBox(width: 8),
                   _SelectionChip(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../database/database_helper.dart';
@@ -34,7 +36,7 @@ class SkillRecord {
   }
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class SkillNotifier extends _$SkillNotifier {
   @override
   Future<List<SkillRecord>> build() async {
@@ -42,7 +44,7 @@ class SkillNotifier extends _$SkillNotifier {
     final cached = await dao.getAllSkills();
 
     // Kick off a background sync from server so cache stays fresh.
-    _syncFromServer();
+    unawaited(_syncFromServer());
 
     // If we have cached skills, return them immediately with their
     // enabled state from the local DB.
@@ -53,6 +55,15 @@ class SkillNotifier extends _$SkillNotifier {
     // No cache yet — wait for the server sync to complete.
     final serverSkills = await ref.read(commandsProvider.future);
     final skills = serverSkills.where((c) => c.source == 'skill').toList();
+
+    // Debug: log what the server actually returned so we can verify
+    // the source field values.
+    print('[SkillProvider] Server returned ${serverSkills.length} commands');
+    for (final c in serverSkills) {
+      print('[SkillProvider]  name=${c.name} source=${c.source}');
+    }
+    print('[SkillProvider] Filtered ${skills.length} skills');
+
     if (skills.isNotEmpty) {
       await dao.upsertSkills(skills);
     }
@@ -75,6 +86,17 @@ class SkillNotifier extends _$SkillNotifier {
     try {
       final serverSkills = await ref.read(commandsProvider.future);
       final skills = serverSkills.where((c) => c.source == 'skill').toList();
+
+      print(
+        '[SkillProvider._syncFromServer] Server returned ${serverSkills.length} commands',
+      );
+      for (final c in serverSkills) {
+        print(
+          '[SkillProvider._syncFromServer]  name=${c.name} source=${c.source}',
+        );
+      }
+      print('[SkillProvider._syncFromServer] Filtered ${skills.length} skills');
+
       final dao = await ref.read(skillDaoProvider.future);
 
       // Upsert all server skills into cache.
