@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -223,7 +225,7 @@ class _SessionListPageState extends ConsumerState<SessionListPage> {
         ref.watch(allSessionsProvider).asData?.value ?? const <Session>[];
 
     Future<void> refreshSessions() async {
-      await ref.refresh(sessionsProvider.future);
+      unawaited(ref.refresh(sessionsProvider.future));
     }
 
     void openSession(Session session) {
