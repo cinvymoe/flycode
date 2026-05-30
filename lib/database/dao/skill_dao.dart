@@ -9,6 +9,7 @@ class SkillDao {
   static const String columnLocation = 'location';
   static const String columnContent = 'content';
   static const String columnEnabled = 'enabled';
+  static const String columnStarred = 'starred';
   static const String columnUpdatedAt = 'updated_at';
 
   final Database db;
@@ -31,6 +32,16 @@ class SkillDao {
     return result.map(_rowToSkill).toList();
   }
 
+  /// Returns only starred skills.
+  Future<List<Skill>> getStarredSkills() async {
+    final result = await db.query(
+      tableName,
+      where: '$columnStarred = ?',
+      whereArgs: [1],
+    );
+    return result.map(_rowToSkill).toList();
+  }
+
   /// Returns the enabled state for a skill by name.
   Future<bool> isSkillEnabled(String name) async {
     final result = await db.query(
@@ -41,6 +52,18 @@ class SkillDao {
     );
     if (result.isEmpty) return true;
     return result.first[columnEnabled] == 1;
+  }
+
+  /// Returns the starred state for a skill by name.
+  Future<bool> isSkillStarred(String name) async {
+    final result = await db.query(
+      tableName,
+      columns: [columnStarred],
+      where: '$columnName = ?',
+      whereArgs: [name],
+    );
+    if (result.isEmpty) return false;
+    return result.first[columnStarred] == 1;
   }
 
   /// Inserts or replaces a skill in the cache.
@@ -76,6 +99,19 @@ class SkillDao {
       tableName,
       {
         columnEnabled: enabled ? 1 : 0,
+        columnUpdatedAt: DateTime.now().millisecondsSinceEpoch,
+      },
+      where: '$columnName = ?',
+      whereArgs: [name],
+    );
+  }
+
+  /// Set the starred flag for a skill.
+  Future<void> setSkillStarred(String name, bool starred) async {
+    await db.update(
+      tableName,
+      {
+        columnStarred: starred ? 1 : 0,
         columnUpdatedAt: DateTime.now().millisecondsSinceEpoch,
       },
       where: '$columnName = ?',

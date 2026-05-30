@@ -28,6 +28,7 @@ import '../../providers/model_variant_provider.dart';
 import '../../providers/skill_provider.dart';
 import '../../service/api/models/agent.dart';
 import '../../service/api/models/provider.dart';
+import '../../service/api/models/skill.dart';
 import '../../service/api/models/permission.dart';
 import '../../service/api/models/session.dart';
 import '../../service/api/models/session_status.dart';
@@ -813,7 +814,18 @@ class ChatInputState extends ConsumerState<ChatInput> {
       backgroundColor: Theme.of(
         context,
       ).colorScheme.surface.withValues(alpha: 0),
-      builder: (context) => const _SkillSelectionSheet(),
+      builder: (context) => _SkillSelectionSheet(
+        onSkillTap: (skill) {
+          _controller.value = TextEditingValue(
+            text: '/${skill.name} ',
+            selection: TextSelection.collapsed(
+              offset: skill.name.length + 2,
+            ),
+          );
+          Navigator.of(context).pop();
+          _focusNode.requestFocus();
+        },
+      ),
     );
   }
 
@@ -2162,7 +2174,9 @@ class _AtFileSuggestionList extends StatelessWidget {
 // ─── Skill 选择底部弹窗 ──────────────────────────────────────────
 
 class _SkillSelectionSheet extends ConsumerStatefulWidget {
-  const _SkillSelectionSheet();
+  final ValueChanged<Skill>? onSkillTap;
+
+  const _SkillSelectionSheet({this.onSkillTap});
 
   @override
   ConsumerState<_SkillSelectionSheet> createState() =>
@@ -2306,6 +2320,15 @@ class _SkillSelectionSheetState extends ConsumerState<_SkillSelectionSheet> {
                         .toList();
                   }
 
+                  // Sort: starred first, then alphabetical by name.
+                  filtered = List<SkillRecord>.from(filtered)
+                    ..sort((a, b) {
+                      if (a.starred != b.starred) {
+                        return a.starred ? -1 : 1;
+                      }
+                      return a.skill.name.compareTo(b.skill.name);
+                    });
+
                   if (filtered.isEmpty) {
                     return Center(
                       child: Padding(
@@ -2325,22 +2348,15 @@ class _SkillSelectionSheetState extends ConsumerState<_SkillSelectionSheet> {
                     itemBuilder: (ctx, i) {
                       final record = filtered[i];
                       final skill = record.skill;
-                      final isEnabled = record.enabled;
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 6),
                         child: Material(
-                          color: isEnabled
-                              ? theme.colorScheme.primary.withValues(
-                                  alpha: 0.08,
-                                )
-                              : tokens.card.withValues(alpha: 0.5),
+                          color: tokens.card.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(tokens.radiusM),
                           child: InkWell(
                             onTap: () {
-                              ref
-                                  .read(skillProvider.notifier)
-                                  .toggleSkill(skill.name);
+                              widget.onSkillTap?.call(skill);
                             },
                             borderRadius: BorderRadius.circular(tokens.radiusM),
                             splashColor: theme.colorScheme.primary.withValues(
@@ -2364,10 +2380,10 @@ class _SkillSelectionSheetState extends ConsumerState<_SkillSelectionSheet> {
                                           '/${skill.name}',
                                           style: TextStyle(
                                             fontSize: 15,
-                                            fontWeight: isEnabled
+                                            fontWeight: record.starred
                                                 ? FontWeight.w700
                                                 : FontWeight.w600,
-                                            color: isEnabled
+                                            color: record.starred
                                                 ? theme.colorScheme.primary
                                                 : theme.colorScheme.onSurface,
                                           ),
@@ -2392,16 +2408,25 @@ class _SkillSelectionSheetState extends ConsumerState<_SkillSelectionSheet> {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  Switch(
-                                    value: isEnabled,
-                                    onChanged: (value) {
+                                  GestureDetector(
+                                    onTap: () {
                                       ref
                                           .read(skillProvider.notifier)
-                                          .setSkillEnabled(skill.name, value);
+                                          .toggleStar(skill.name);
                                     },
-                                    activeThumbColor: theme.colorScheme.primary,
-                                    materialTapTargetSize:
-                                        MaterialTapTargetSize.shrinkWrap,
+                                    behavior: HitTestBehavior.opaque,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(4),
+                                      child: Icon(
+                                        record.starred
+                                            ? Icons.star
+                                            : Icons.star_border,
+                                        size: 20,
+                                        color: record.starred
+                                            ? theme.colorScheme.primary
+                                            : tokens.mutedForeground,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),

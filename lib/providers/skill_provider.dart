@@ -19,17 +19,23 @@ Future<SkillDao> skillDao(Ref ref) async {
   return SkillDao(db);
 }
 
-/// A local-cached skill record that carries its enabled state.
+/// A local-cached skill record that carries its enabled and starred state.
 class SkillRecord {
   final Skill skill;
   final bool enabled;
+  final bool starred;
 
-  const SkillRecord({required this.skill, required this.enabled});
+  const SkillRecord({
+    required this.skill,
+    required this.enabled,
+    this.starred = false,
+  });
 
-  SkillRecord copyWith({Skill? skill, bool? enabled}) {
+  SkillRecord copyWith({Skill? skill, bool? enabled, bool? starred}) {
     return SkillRecord(
       skill: skill ?? this.skill,
       enabled: enabled ?? this.enabled,
+      starred: starred ?? this.starred,
     );
   }
 }
@@ -47,7 +53,7 @@ class SkillNotifier extends _$SkillNotifier {
     // If we have cached skills, return them immediately with their
     // enabled state from the local DB.
     if (cached.isNotEmpty) {
-      return _loadWithEnabledState(dao, cached);
+      return _loadWithLocalState(dao, cached);
     }
 
     // No cache yet — wait for the server sync to complete.
@@ -56,17 +62,20 @@ class SkillNotifier extends _$SkillNotifier {
     if (serverSkills.isNotEmpty) {
       await dao.upsertSkills(serverSkills);
     }
-    return _loadWithEnabledState(dao, serverSkills);
+    return _loadWithLocalState(dao, serverSkills);
   }
 
-  Future<List<SkillRecord>> _loadWithEnabledState(
+  Future<List<SkillRecord>> _loadWithLocalState(
     SkillDao dao,
     List<Skill> skills,
   ) async {
     final records = <SkillRecord>[];
     for (final skill in skills) {
       final enabled = await dao.isSkillEnabled(skill.name);
-      records.add(SkillRecord(skill: skill, enabled: enabled));
+      final starred = await dao.isSkillStarred(skill.name);
+      records.add(
+        SkillRecord(skill: skill, enabled: enabled, starred: starred),
+      );
     }
     return records;
   }
@@ -83,7 +92,12 @@ class SkillNotifier extends _$SkillNotifier {
       final serverNames = serverSkills.map((s) => s.name).toSet();
       await dao.deleteSkillsNotIn(serverNames);
 
-      ref.invalidateSelf();
+      // Directly update state instead of invalidateSelf() to avoid a
+      // rebuild loop: invalidateSelf() → build() → _syncFromServer() →
+      // invalidateSelf() → … which keeps the provider cycling through
+      // AsyncLoading and makes the UI spin forever.
+      final records = await _loadWithLocalState(dao, serverSkills);
+      state = AsyncData(records);
     } catch (_) {
       // Silently ignore sync errors — cached data is still usable.
     }
@@ -94,18 +108,35 @@ class SkillNotifier extends _$SkillNotifier {
     final dao = await ref.read(skillDaoProvider.future);
     final currentEnabled = await dao.isSkillEnabled(name);
     await dao.setSkillEnabled(name, !currentEnabled);
-    ref.invalidateSelf();
+    // Update state directly to avoid invalidateSelf() rebuild loop.
+    await _updateStateFromCache(dao);
   }
 
   /// Enable or disable a specific skill.
   Future<void> setSkillEnabled(String name, bool enabled) async {
     final dao = await ref.read(skillDaoProvider.future);
     await dao.setSkillEnabled(name, enabled);
-    ref.invalidateSelf();
+    // Update state directly to avoid invalidateSelf() rebuild loop.
+    await _updateStateFromCache(dao);
+  }
+
+  /// Toggle a skill's starred state.
+  Future<void> toggleStar(String name) async {
+    final dao = await ref.read(skillDaoProvider.future);
+    final currentStarred = await dao.isSkillStarred(name);
+    await dao.setSkillStarred(name, !currentStarred);
+    await _updateStateFromCache(dao);
   }
 
   /// Force refresh from server + invalidate cache.
   Future<void> refresh() async {
     await _syncFromServer();
+  }
+
+  /// Read the current cache and update state directly (avoids rebuild loop).
+  Future<void> _updateStateFromCache(SkillDao dao) async {
+    final cached = await dao.getAllSkills();
+    final records = await _loadWithLocalState(dao, cached);
+    state = AsyncData(records);
   }
 }
