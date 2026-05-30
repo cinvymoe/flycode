@@ -59,7 +59,8 @@ class _FileContentPageState extends ConsumerState<FileContentPage> {
     final colorScheme = theme.colorScheme;
     final tokens = context.tokens;
 
-    final canShowDiff = contentAsync.hasValue &&
+    final canShowDiff =
+        contentAsync.hasValue &&
         !contentAsync.value!.isBinary &&
         (contentAsync.value!.diff != null || contentAsync.value!.patch != null);
 
@@ -102,13 +103,9 @@ class _FileContentPageState extends ConsumerState<FileContentPage> {
           if (canShowDiff)
             IconButton(
               icon: Icon(
-                _showDiff
-                    ? Icons.code_rounded
-                    : Icons.difference_outlined,
+                _showDiff ? Icons.code_rounded : Icons.difference_outlined,
                 size: 18,
-                color: _showDiff
-                    ? colorScheme.primary
-                    : tokens.mutedForeground,
+                color: _showDiff ? colorScheme.primary : tokens.mutedForeground,
               ),
               tooltip: context.l10n.fileContentDiffToggle,
               onPressed: () => setState(() => _showDiff = !_showDiff),
@@ -537,9 +534,7 @@ class _PatchDiffContentView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: SingleChildScrollView(
-        child: PatchDiffView(patch: patch),
-      ),
+      child: SingleChildScrollView(child: PatchDiffView(patch: patch)),
     );
   }
 }

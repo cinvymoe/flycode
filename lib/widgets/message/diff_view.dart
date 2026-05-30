@@ -515,7 +515,10 @@ class PatchDiffView extends StatelessWidget {
         } else {
           // Unchanged line (space prefix)
           allLines.add(
-            DiffLine(op: DIFF_EQUAL, text: line.length > 1 ? line.substring(1) : ''),
+            DiffLine(
+              op: DIFF_EQUAL,
+              text: line.length > 1 ? line.substring(1) : '',
+            ),
           );
           i++;
         }
@@ -599,8 +602,9 @@ class PatchDiffView extends StatelessWidget {
       clipBehavior: Clip.hardEdge,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final parentWidth =
-              constraints.maxWidth.isFinite ? constraints.maxWidth : 0.0;
+          final parentWidth = constraints.maxWidth.isFinite
+              ? constraints.maxWidth
+              : 0.0;
 
           final column = Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
