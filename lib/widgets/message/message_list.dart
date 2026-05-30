@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/l10n.dart';
 import '../../providers/session_provider.dart';
+import '../../providers/session_status_provider.dart';
+import '../../providers/current_directory_provider.dart';
+import '../../providers/todo_provider.dart';
+import '../../service/api/session_api.dart';
 import '../../service/api/models/message.dart';
 import '../../service/api/models/parts.dart';
 import '../../theme/app_tokens.dart';
@@ -25,6 +29,12 @@ class MessageList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final messagesAsync = ref.watch(sessionMessagesProvider(sessionID));
     final l10n = context.l10n;
+    final isWorking = ref.watch(
+      sessionStatusProvider.select(
+        (s) => s[sessionID] != null && s[sessionID]!.isWorking,
+      ),
+    );
+    final isReverted = ref.watch(currentSessionRevertProvider) != null;
 
     return messagesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -34,9 +44,19 @@ class MessageList extends ConsumerWidget {
         }
         return MessageErrorState(message: l10n.messageListLoadFailed);
       },
-      data: (messages) => _MessageListBody(
-        messages: messages,
-        onNavigateToSubSession: onNavigateToSubSession,
+      data: (messages) => Column(
+        children: [
+          RevertedBanner(sessionID: sessionID),
+          Expanded(
+            child: _MessageListBody(
+              messages: messages,
+              onNavigateToSubSession: onNavigateToSubSession,
+              sessionID: sessionID,
+              isWorking: isWorking,
+              isReverted: isReverted,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -46,6 +66,9 @@ class MessageList extends ConsumerWidget {
 class MessageListView extends StatefulWidget {
   final List<MessageWithParts> messages;
   final void Function(String sessionId)? onNavigateToSubSession;
+  final String? sessionID;
+  final bool isWorking;
+  final bool isReverted;
   final double bottomDetachedThreshold;
   final Duration scrollToBottomAnimationDuration;
 
@@ -53,6 +76,9 @@ class MessageListView extends StatefulWidget {
     super.key,
     required this.messages,
     this.onNavigateToSubSession,
+    this.sessionID,
+    this.isWorking = false,
+    this.isReverted = false,
     this.bottomDetachedThreshold = 72,
     this.scrollToBottomAnimationDuration = const Duration(milliseconds: 220),
   });
@@ -64,13 +90,25 @@ class MessageListView extends StatefulWidget {
 class _MessageListBody extends StatelessWidget {
   final List<MessageWithParts> messages;
   final void Function(String sessionId)? onNavigateToSubSession;
+  final String? sessionID;
+  final bool isWorking;
+  final bool isReverted;
 
-  const _MessageListBody({required this.messages, this.onNavigateToSubSession});
+  const _MessageListBody({
+    required this.messages,
+    this.onNavigateToSubSession,
+    this.sessionID,
+    this.isWorking = false,
+    this.isReverted = false,
+  });
 
   @override
   Widget build(BuildContext context) => MessageListView(
     messages: messages,
     onNavigateToSubSession: onNavigateToSubSession,
+    sessionID: sessionID,
+    isWorking: isWorking,
+    isReverted: isReverted,
   );
 }
 
@@ -319,6 +357,9 @@ class _MessageListViewState extends State<MessageListView> {
                 messageWithParts: messageWithParts,
                 prevIsUser: prevIsUser,
                 isLatestMessage: index == 0,
+                sessionID: widget.sessionID,
+                isWorking: widget.isWorking,
+                isReverted: widget.isReverted,
                 onNavigateToSubSession: widget.onNavigateToSubSession,
               );
             },
@@ -362,6 +403,73 @@ class _MessageListViewState extends State<MessageListView> {
         ),
       ],
     );
+  }
+}
+
+class RevertedBanner extends ConsumerWidget {
+  final String sessionID;
+
+  const RevertedBanner({super.key, required this.sessionID});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final revert = ref.watch(currentSessionRevertProvider);
+    if (revert == null) return const SizedBox.shrink();
+
+    final tokens = context.tokens;
+    final l10n = context.l10n;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: tokens.info.withValues(alpha: 0.15),
+        border: Border(
+          bottom: BorderSide(color: tokens.border.withValues(alpha: 0.5)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, size: 16, color: tokens.mutedForeground),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              l10n.revertBannerText,
+              style: TextStyle(fontSize: 13, color: tokens.mutedForeground),
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: () => _handleUnrevert(ref, context),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              l10n.revertRestore,
+              style: TextStyle(fontSize: 13, color: tokens.accent),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleUnrevert(WidgetRef ref, BuildContext context) async {
+    try {
+      final api = await ref.read(sessionApiProvider.future);
+      final directory = ref.read(currentDirectoryProvider);
+      await api.unrevertSession(sessionID, directory: directory);
+      ref.invalidate(sessionDiffProvider(sessionID));
+      ref.invalidate(sessionTodosProvider(sessionID));
+      ref.invalidate(sessionsProvider);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.unrevertFailed(e.toString()))),
+        );
+      }
+    }
   }
 }
 
