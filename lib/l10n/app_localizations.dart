@@ -1291,6 +1291,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No skills available'**
   String get skillSelectionNoSkills;
+
+  /// No description provided for @fileContentDiffToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle diff view'**
+  String get fileContentDiffToggle;
+
+  /// No description provided for @fileContentDiffNoChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'No changes'**
+  String get fileContentDiffNoChanges;
 }
 
 class _AppLocalizationsDelegate

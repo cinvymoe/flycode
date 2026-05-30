@@ -697,4 +697,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get skillSelectionNoSkills => 'No skills available';
+
+  @override
+  String get fileContentDiffToggle => 'Toggle diff view';
+
+  @override
+  String get fileContentDiffNoChanges => 'No changes';
 }

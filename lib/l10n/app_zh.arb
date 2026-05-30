@@ -445,5 +445,7 @@
   "sessionListNewSession": "新建会话",
   "skillSelectionTitle": "Skill",
   "skillSelectionSearchHint": "搜索 Skill",
-  "skillSelectionNoSkills": "暂无可用的 Skill"
+  "skillSelectionNoSkills": "暂无可用的 Skill",
+  "fileContentDiffToggle": "切换 Diff 视图",
+  "fileContentDiffNoChanges": "无变更"
 }

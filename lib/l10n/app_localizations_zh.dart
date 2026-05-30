@@ -672,4 +672,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get skillSelectionNoSkills => '暂无可用的 Skill';
+
+  @override
+  String get fileContentDiffToggle => '切换 Diff 视图';
+
+  @override
+  String get fileContentDiffNoChanges => '无变更';
 }
