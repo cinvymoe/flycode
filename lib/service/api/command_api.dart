@@ -5,13 +5,13 @@ import 'models/command.dart';
 
 part 'command_api.g.dart';
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<CommandApi> commandApi(Ref ref) async {
   final client = await ref.watch(apiClientProvider.future);
   return CommandApi(client);
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 Future<List<Command>> commands(Ref ref) async {
   final api = await ref.watch(commandApiProvider.future);
   final directory = ref.watch(currentDirectoryProvider);

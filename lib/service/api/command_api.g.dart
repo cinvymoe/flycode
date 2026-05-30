@@ -26,7 +26,7 @@ final class CommandApiProvider
         argument: null,
         retry: null,
         name: r'commandApiProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -45,7 +45,7 @@ final class CommandApiProvider
   }
 }
 
-String _$commandApiHash() => r'b631eb06d4cc93e23b3603558c5bd7a8508b65b2';
+String _$commandApiHash() => r'00ec16ed69fa7609af1495e691d19fd4138e7769';
 
 @ProviderFor(commands)
 final commandsProvider = CommandsProvider._();
@@ -64,7 +64,7 @@ final class CommandsProvider
         argument: null,
         retry: null,
         name: r'commandsProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -84,4 +84,4 @@ final class CommandsProvider
   }
 }
 
-String _$commandsHash() => r'05d1b153e3721c83b7d0b7415b9ff6a8dfa15a6e';
+String _$commandsHash() => r'f2682876e878c638da2792ca2410d256cc81084b';
