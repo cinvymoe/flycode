@@ -818,9 +818,7 @@ class ChatInputState extends ConsumerState<ChatInput> {
         onSkillTap: (skill) {
           _controller.value = TextEditingValue(
             text: '/${skill.name} ',
-            selection: TextSelection.collapsed(
-              offset: skill.name.length + 2,
-            ),
+            selection: TextSelection.collapsed(offset: skill.name.length + 2),
           );
           Navigator.of(context).pop();
           _focusNode.requestFocus();
