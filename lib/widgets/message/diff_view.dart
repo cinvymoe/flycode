@@ -2,6 +2,7 @@ import 'package:diff_match_patch/diff_match_patch.dart';
 import 'package:flutter/material.dart';
 import 'package:highlight/highlight.dart' show highlight, Node;
 
+import '../../service/api/models/file_content.dart';
 import '../../theme/app_tokens.dart';
 import 'code_highlight_theme.dart';
 
@@ -418,5 +419,247 @@ class DiffLineRow extends StatelessWidget {
     }
 
     return spans;
+  }
+}
+
+// ──────────────────────────────────────────────
+// Patch Diff 渲染器（FileContentPatch → inline diff）
+// ──────────────────────────────────────────────
+
+class PatchDiffView extends StatelessWidget {
+  const PatchDiffView({
+    super.key,
+    required this.patch,
+    this.fileName,
+    this.maxLines = 1000,
+  });
+
+  final FileContentPatch patch;
+  final String? fileName;
+  final int maxLines;
+
+  static const int _contextLines = 3;
+
+  /// 从文件名推断语言，排除纯文本类型
+  String? get _language {
+    final name = fileName ?? patch.newFileName;
+    if (name.isEmpty) return null;
+
+    final ext = name.toLowerCase().split('.').lastOrNull;
+    if (ext == null || ext.isEmpty) return null;
+
+    const textExtensions = {'txt', 'md', 'markdown', 'log', 'csv', 'tsv'};
+    if (textExtensions.contains(ext)) return null;
+
+    return ext;
+  }
+
+  /// 计算所有 hunk 行数
+  int get _totalLines {
+    int count = 0;
+    for (final hunk in patch.hunks) {
+      count += hunk.lines.length;
+    }
+    return count;
+  }
+
+  /// 计算增加/删除行数（供外部 info bar 使用）
+  ({int additions, int deletions}) get counts {
+    int additions = 0;
+    int deletions = 0;
+    for (final hunk in patch.hunks) {
+      for (final line in hunk.lines) {
+        if (line.startsWith('+')) {
+          additions++;
+        } else if (line.startsWith('-')) {
+          deletions++;
+        }
+      }
+    }
+    return (additions: additions, deletions: deletions);
+  }
+
+  /// Parse hunks into mobile display items (DiffLine / CollapsedHint)
+  List<Object> _buildDisplayItems() {
+    final allLines = <DiffLine>[];
+
+    for (final hunk in patch.hunks) {
+      int i = 0;
+      final lines = hunk.lines;
+      while (i < lines.length) {
+        final line = lines[i];
+        if (line.startsWith('-')) {
+          // Collect consecutive removals
+          final removedTexts = <String>[];
+          while (i < lines.length && lines[i].startsWith('-')) {
+            removedTexts.add(lines[i].substring(1));
+            i++;
+          }
+          // Then collect consecutive additions
+          final addedTexts = <String>[];
+          while (i < lines.length && lines[i].startsWith('+')) {
+            addedTexts.add(lines[i].substring(1));
+            i++;
+          }
+          // Emit removals then additions
+          for (final text in removedTexts) {
+            allLines.add(DiffLine(op: DIFF_DELETE, text: text));
+          }
+          for (final text in addedTexts) {
+            allLines.add(DiffLine(op: DIFF_INSERT, text: text));
+          }
+        } else if (line.startsWith('+')) {
+          // Standalone addition (not preceded by removal)
+          allLines.add(DiffLine(op: DIFF_INSERT, text: line.substring(1)));
+          i++;
+        } else {
+          // Unchanged line (space prefix)
+          allLines.add(
+            DiffLine(op: DIFF_EQUAL, text: line.length > 1 ? line.substring(1) : ''),
+          );
+          i++;
+        }
+      }
+    }
+
+    // Collapse long unchanged sections
+    final result = <Object>[];
+    int j = 0;
+
+    while (j < allLines.length) {
+      if (allLines[j].op == DIFF_EQUAL) {
+        final start = j;
+        while (j < allLines.length && allLines[j].op == DIFF_EQUAL) {
+          j++;
+        }
+        final equalCount = j - start;
+        final keepBefore = result.isNotEmpty ? _contextLines : 0;
+        final keepAfter = j < allLines.length ? _contextLines : 0;
+        final collapseCount = equalCount - keepBefore - keepAfter;
+
+        if (collapseCount > 0) {
+          for (int k = start; k < start + keepBefore; k++) {
+            result.add(allLines[k]);
+          }
+          result.add(CollapsedHint(collapseCount));
+          for (int k = j - keepAfter; k < j; k++) {
+            result.add(allLines[k]);
+          }
+        } else {
+          for (int k = start; k < j; k++) {
+            result.add(allLines[k]);
+          }
+        }
+      } else {
+        result.add(allLines[j]);
+        j++;
+      }
+    }
+
+    return result;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final theme = Theme.of(context);
+
+    if (_totalLines > maxLines) {
+      return _buildTooLargeWidget(tokens, theme);
+    }
+
+    final items = _buildDisplayItems();
+
+    if (items.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: tokens.card,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: tokens.border.withValues(alpha: 0.8)),
+        ),
+        child: Text(
+          '(empty)',
+          style: TextStyle(
+            fontSize: 12,
+            color: tokens.mutedForeground,
+            fontFamily: 'monospace',
+          ),
+        ),
+      );
+    }
+
+    final highlightTheme = buildHighlightTheme(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: tokens.border.withValues(alpha: 0.8)),
+      ),
+      clipBehavior: Clip.hardEdge,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final parentWidth =
+              constraints.maxWidth.isFinite ? constraints.maxWidth : 0.0;
+
+          final column = Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(width: parentWidth, height: 0),
+              ...items.map((item) {
+                if (item is CollapsedHint) {
+                  return CollapsedHintRow(count: item.count);
+                }
+                return DiffLineRow(
+                  line: item as DiffLine,
+                  language: _language,
+                  highlightTheme: highlightTheme,
+                );
+              }),
+            ],
+          );
+
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: IntrinsicWidth(child: column),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTooLargeWidget(AppThemeTokens tokens, ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: tokens.card,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: tokens.border.withValues(alpha: 0.8)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            color: tokens.warningForeground,
+            size: 28,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '变更内容过大（超过 $maxLines 行）',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '暂不支持查看完整 diff',
+            style: TextStyle(fontSize: 12, color: tokens.mutedForeground),
+          ),
+        ],
+      ),
+    );
   }
 }
