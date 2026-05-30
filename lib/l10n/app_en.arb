@@ -447,5 +447,35 @@
   "skillSelectionSearchHint": "Search skills",
   "skillSelectionNoSkills": "No skills available",
   "fileContentDiffToggle": "Toggle diff view",
-  "fileContentDiffNoChanges": "No changes"
+  "fileContentDiffNoChanges": "No changes",
+  "revertToHere": "Revert to here",
+  "@revertToHere": {},
+  "revertConfirmTitle": "Revert to here",
+  "@revertConfirmTitle": {},
+  "revertConfirmBody": "This will remove all messages after this point. Continue?",
+  "@revertConfirmBody": {},
+  "revertConfirmAction": "Revert",
+  "@revertConfirmAction": {},
+  "revertCancel": "Cancel",
+  "@revertCancel": {},
+  "revertBannerText": "Reverted · Messages after this point have been removed",
+  "@revertBannerText": {},
+  "revertRestore": "Restore",
+  "@revertRestore": {},
+  "revertFailed": "Revert failed: {error}",
+  "@revertFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "unrevertFailed": "Restore failed: {error}",
+  "@unrevertFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
 }

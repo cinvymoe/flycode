@@ -447,5 +447,35 @@
   "skillSelectionSearchHint": "搜索 Skill",
   "skillSelectionNoSkills": "暂无可用的 Skill",
   "fileContentDiffToggle": "切换 Diff 视图",
-  "fileContentDiffNoChanges": "无变更"
+  "fileContentDiffNoChanges": "无变更",
+  "revertToHere": "回退到此处",
+  "@revertToHere": {},
+  "revertConfirmTitle": "回退到此处",
+  "@revertConfirmTitle": {},
+  "revertConfirmBody": "此操作将移除该消息之后的所有消息，是否继续？",
+  "@revertConfirmBody": {},
+  "revertConfirmAction": "回退",
+  "@revertConfirmAction": {},
+  "revertCancel": "取消",
+  "@revertCancel": {},
+  "revertBannerText": "已回退 · 之后的消息已移除",
+  "@revertBannerText": {},
+  "revertRestore": "恢复",
+  "@revertRestore": {},
+  "revertFailed": "回退失败：{error}",
+  "@revertFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "unrevertFailed": "恢复失败：{error}",
+  "@unrevertFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -678,4 +678,35 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get fileContentDiffNoChanges => '无变更';
+
+  @override
+  String get revertToHere => '回退到此处';
+
+  @override
+  String get revertConfirmTitle => '回退到此处';
+
+  @override
+  String get revertConfirmBody => '此操作将移除该消息之后的所有消息，是否继续？';
+
+  @override
+  String get revertConfirmAction => '回退';
+
+  @override
+  String get revertCancel => '取消';
+
+  @override
+  String get revertBannerText => '已回退 · 之后的消息已移除';
+
+  @override
+  String get revertRestore => '恢复';
+
+  @override
+  String revertFailed(String error) {
+    return '回退失败：$error';
+  }
+
+  @override
+  String unrevertFailed(String error) {
+    return '恢复失败：$error';
+  }
 }
