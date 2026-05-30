@@ -3,7 +3,9 @@ import '../service/api/models/message.dart' hide FileDiff;
 import '../service/api/models/parts.dart';
 import '../service/api/session_api.dart';
 import '../service/api/models/session.dart';
+import 'chat_view_state_provider.dart';
 import 'current_directory_provider.dart';
+import 'todo_provider.dart';
 
 part 'session_provider.g.dart';
 
@@ -186,6 +188,19 @@ class SessionMessagesNotifier extends _$SessionMessagesNotifier {
     );
   }
 
+  /// 回退到指定消息：调用后端 revert API，不做本地状态变更，等 SSE 驱动
+  Future<void> revertToMessage(String messageID) async {
+    final api = await ref.read(sessionApiProvider.future);
+    final directory = ref.read(currentDirectoryProvider);
+    await api.revertMessage(
+      sessionID,
+      data: {'messageID': messageID},
+      directory: directory,
+    );
+    ref.invalidate(sessionDiffProvider(sessionID));
+    ref.invalidate(sessionTodosProvider(sessionID));
+  }
+
   List<MessageWithParts> get _currentMessages => state.asData?.value ?? [];
 
   void _setState(List<MessageWithParts> messages) {
@@ -263,6 +278,18 @@ class SubSessionMessagesNotifier extends _$SubSessionMessagesNotifier {
     );
   }
 
+  Future<void> revertToMessage(String messageID) async {
+    final api = await ref.read(sessionApiProvider.future);
+    final directory = ref.read(currentDirectoryProvider);
+    await api.revertMessage(
+      sessionID,
+      data: {'messageID': messageID},
+      directory: directory,
+    );
+    ref.invalidate(sessionDiffProvider(sessionID));
+    ref.invalidate(sessionTodosProvider(sessionID));
+  }
+
   List<MessageWithParts> get _currentMessages => state.asData?.value ?? [];
 
   void _setState(List<MessageWithParts> messages) {
@@ -328,4 +355,17 @@ List<Object> _normalizeParts(List<Object> parts) {
   }
 
   return normalized;
+}
+
+@riverpod
+SessionRevert? currentSessionRevert(Ref ref) {
+  final sessionId = ref.watch(chatViewStateProvider).sessionId;
+  if (sessionId == null) return null;
+  final sessions = ref.watch(sessionsProvider).asData?.value;
+  if (sessions == null) return null;
+  try {
+    return sessions.firstWhere((s) => s.id == sessionId).revert;
+  } catch (_) {
+    return null;
+  }
 }

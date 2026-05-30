@@ -56,7 +56,7 @@ final class SessionMessagesNotifierProvider
 }
 
 String _$sessionMessagesNotifierHash() =>
-    r'1e3a0c7c8f9a1b9fb15312c5054cfd6f60eea068';
+    r'1fc2569060cbffc61f250e2ba7b9cf15e4bfb5d9';
 
 final class SessionMessagesNotifierFamily extends $Family
     with
@@ -236,7 +236,7 @@ final class SubSessionMessagesNotifierProvider
 }
 
 String _$subSessionMessagesNotifierHash() =>
-    r'1efa5c7d348a6dcec97af0262b37bb586afc4763';
+    r'54f24c2de4e7792f4674750c7819759239e85490';
 
 /// 子 Session 消息列表（只读，支持 SSE 实时更新）
 
@@ -295,3 +295,45 @@ abstract class _$SubSessionMessagesNotifier
     element.handleCreate(ref, () => build(_$args));
   }
 }
+
+@ProviderFor(currentSessionRevert)
+final currentSessionRevertProvider = CurrentSessionRevertProvider._();
+
+final class CurrentSessionRevertProvider
+    extends $FunctionalProvider<SessionRevert?, SessionRevert?, SessionRevert?>
+    with $Provider<SessionRevert?> {
+  CurrentSessionRevertProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'currentSessionRevertProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$currentSessionRevertHash();
+
+  @$internal
+  @override
+  $ProviderElement<SessionRevert?> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  SessionRevert? create(Ref ref) {
+    return currentSessionRevert(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SessionRevert? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SessionRevert?>(value),
+    );
+  }
+}
+
+String _$currentSessionRevertHash() =>
+    r'2cf111aca843eb73a7541e24bee02251d47c65cf';
