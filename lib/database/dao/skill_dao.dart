@@ -2,14 +2,17 @@ import 'dart:convert';
 
 import 'package:sqflite/sqflite.dart';
 
-import '../../service/api/models/skill.dart';
+import '../../service/api/models/command.dart';
 
 class SkillDao {
   static const String tableName = 'skills';
   static const String columnName = 'name';
   static const String columnDescription = 'description';
-  static const String columnLocation = 'location';
-  static const String columnContent = 'content';
+  static const String columnSource = 'source';
+  static const String columnAgent = 'agent';
+  static const String columnModel = 'model';
+  static const String columnTemplate = 'template';
+  static const String columnHints = 'hints';
   static const String columnEnabled = 'enabled';
   static const String columnUpdatedAt = 'updated_at';
 
@@ -18,19 +21,19 @@ class SkillDao {
   SkillDao(this.db);
 
   /// Returns all skills from local cache.
-  Future<List<Skill>> getAllSkills() async {
+  Future<List<Command>> getAllSkills() async {
     final result = await db.query(tableName);
-    return result.map(_rowToSkill).toList();
+    return result.map(_rowToCommand).toList();
   }
 
   /// Returns only enabled skills.
-  Future<List<Skill>> getEnabledSkills() async {
+  Future<List<Command>> getEnabledSkills() async {
     final result = await db.query(
       tableName,
       where: '$columnEnabled = ?',
       whereArgs: [1],
     );
-    return result.map(_rowToSkill).toList();
+    return result.map(_rowToCommand).toList();
   }
 
   /// Returns the enabled state for a skill by name.
@@ -46,25 +49,25 @@ class SkillDao {
   }
 
   /// Inserts or replaces a skill in the cache.
-  Future<void> upsertSkill(Skill skill) async {
+  Future<void> upsertSkill(Command command) async {
     await db.insert(
       tableName,
-      _skillToRow(skill),
+      _commandToRow(command),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
 
   /// Batch upsert — syncs server skills into local cache.
-  Future<void> upsertSkills(Iterable<Skill> skills) async {
-    final list = skills.toList();
+  Future<void> upsertSkills(Iterable<Command> commands) async {
+    final list = commands.toList();
     if (list.isEmpty) return;
 
     await db.transaction((txn) async {
       final batch = txn.batch();
-      for (final skill in list) {
+      for (final command in list) {
         batch.insert(
           tableName,
-          _skillToRow(skill),
+          _commandToRow(command),
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
       }
@@ -99,23 +102,39 @@ class SkillDao {
     );
   }
 
-  Map<String, dynamic> _skillToRow(Skill skill) {
+  Map<String, dynamic> _commandToRow(Command command) {
     return {
-      columnName: skill.name,
-      columnDescription: skill.description,
-      columnLocation: skill.location,
-      columnContent: skill.content,
+      columnName: command.name,
+      columnDescription: command.description,
+      columnSource: command.source,
+      columnAgent: command.agent,
+      columnModel: command.model,
+      columnTemplate: command.template,
+      columnHints: jsonEncode(command.hints),
       columnEnabled: 1,
       columnUpdatedAt: DateTime.now().millisecondsSinceEpoch,
     };
   }
 
-  Skill _rowToSkill(Map<String, dynamic> row) {
-    return Skill(
+  Command _rowToCommand(Map<String, dynamic> row) {
+    final hintsRaw = row[columnHints] as String? ?? '[]';
+    List<String> hints;
+    try {
+      hints = (jsonDecode(hintsRaw) as List<dynamic>)
+          .map((e) => e as String)
+          .toList();
+    } catch (_) {
+      hints = [];
+    }
+
+    return Command(
       name: row[columnName] as String,
       description: row[columnDescription] as String?,
-      location: row[columnLocation] as String? ?? '',
-      content: row[columnContent] as String? ?? '',
+      source: row[columnSource] as String?,
+      agent: row[columnAgent] as String?,
+      model: row[columnModel] as String?,
+      template: row[columnTemplate] as String? ?? '',
+      hints: hints,
     );
   }
 }

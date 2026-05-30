@@ -4,7 +4,7 @@ import 'package:path/path.dart';
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   static Database? _database;
-  static const int _dbVersion = 4;
+  static const int _dbVersion = 3;
 
   factory DatabaseHelper() => _instance;
 
@@ -51,8 +51,11 @@ class DatabaseHelper {
       CREATE TABLE skills (
         name TEXT NOT NULL,
         description TEXT,
-        location TEXT NOT NULL DEFAULT '',
-        content TEXT NOT NULL DEFAULT '',
+        source TEXT,
+        agent TEXT,
+        model TEXT,
+        template TEXT NOT NULL DEFAULT '',
+        hints TEXT NOT NULL DEFAULT '[]',
         enabled INTEGER NOT NULL DEFAULT 1,
         updated_at INTEGER NOT NULL,
         PRIMARY KEY (name)
@@ -82,21 +85,6 @@ class DatabaseHelper {
           model TEXT,
           template TEXT NOT NULL DEFAULT '',
           hints TEXT NOT NULL DEFAULT '[]',
-          enabled INTEGER NOT NULL DEFAULT 1,
-          updated_at INTEGER NOT NULL,
-          PRIMARY KEY (name)
-        )
-      ''');
-    }
-
-    if (oldVersion < 4) {
-      await db.execute('DROP TABLE IF EXISTS skills');
-      await db.execute('''
-        CREATE TABLE skills (
-          name TEXT NOT NULL,
-          description TEXT,
-          location TEXT NOT NULL DEFAULT '',
-          content TEXT NOT NULL DEFAULT '',
           enabled INTEGER NOT NULL DEFAULT 1,
           updated_at INTEGER NOT NULL,
           PRIMARY KEY (name)

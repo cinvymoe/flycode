@@ -2,8 +2,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../database/database_helper.dart';
 import '../database/dao/skill_dao.dart';
-import '../service/api/skill_api.dart';
-import '../service/api/models/skill.dart';
+import '../service/api/command_api.dart';
+import '../service/api/models/command.dart';
 
 part 'skill_provider.g.dart';
 
@@ -21,14 +21,14 @@ Future<SkillDao> skillDao(Ref ref) async {
 
 /// A local-cached skill record that carries its enabled state.
 class SkillRecord {
-  final Skill skill;
+  final Command command;
   final bool enabled;
 
-  const SkillRecord({required this.skill, required this.enabled});
+  const SkillRecord({required this.command, required this.enabled});
 
-  SkillRecord copyWith({Skill? skill, bool? enabled}) {
+  SkillRecord copyWith({Command? command, bool? enabled}) {
     return SkillRecord(
-      skill: skill ?? this.skill,
+      command: command ?? this.command,
       enabled: enabled ?? this.enabled,
     );
   }
@@ -51,36 +51,38 @@ class SkillNotifier extends _$SkillNotifier {
     }
 
     // No cache yet — wait for the server sync to complete.
-    final serverSkills = await ref.watch(skillsProvider.future);
+    final serverSkills = await ref.watch(commandsProvider.future);
+    final skills = serverSkills.where((c) => c.source == 'skill').toList();
 
-    if (serverSkills.isNotEmpty) {
-      await dao.upsertSkills(serverSkills);
+    if (skills.isNotEmpty) {
+      await dao.upsertSkills(skills);
     }
-    return _loadWithEnabledState(dao, serverSkills);
+    return _loadWithEnabledState(dao, skills);
   }
 
   Future<List<SkillRecord>> _loadWithEnabledState(
     SkillDao dao,
-    List<Skill> skills,
+    List<Command> commands,
   ) async {
     final records = <SkillRecord>[];
-    for (final skill in skills) {
-      final enabled = await dao.isSkillEnabled(skill.name);
-      records.add(SkillRecord(skill: skill, enabled: enabled));
+    for (final cmd in commands) {
+      final enabled = await dao.isSkillEnabled(cmd.name);
+      records.add(SkillRecord(command: cmd, enabled: enabled));
     }
     return records;
   }
 
   Future<void> _syncFromServer() async {
     try {
-      final serverSkills = await ref.read(skillsProvider.future);
+      final serverSkills = await ref.read(commandsProvider.future);
+      final skills = serverSkills.where((c) => c.source == 'skill').toList();
       final dao = await ref.read(skillDaoProvider.future);
 
       // Upsert all server skills into cache.
-      await dao.upsertSkills(serverSkills);
+      await dao.upsertSkills(skills);
 
       // Remove stale skills that are no longer on the server.
-      final serverNames = serverSkills.map((s) => s.name).toSet();
+      final serverNames = skills.map((c) => c.name).toSet();
       await dao.deleteSkillsNotIn(serverNames);
 
       ref.invalidateSelf();
