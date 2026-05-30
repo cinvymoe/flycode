@@ -66,6 +66,11 @@ GlobalEventHandler globalEventNotificationHandler(Ref ref) {
   return _NotificationGlobalEventHandler(ref);
 }
 
+@Riverpod(keepAlive: true)
+GlobalEventHandler globalEventDiffHandler(Ref ref) {
+  return _DiffGlobalEventHandler(ref);
+}
+
 class _SessionGlobalEventHandler implements GlobalEventHandler {
   const _SessionGlobalEventHandler(this.ref);
 
@@ -351,7 +356,8 @@ class _NotificationGlobalEventHandler implements GlobalEventHandler {
     if (!shouldSend) return;
 
     final session = await _sessionForNotification(sessionID);
-    if (session == null || _isSubSession(session)) return;
+    if (session == null) return;
+    if (_isSubSession(session)) return;
 
     try {
       await ref
@@ -374,15 +380,14 @@ class _NotificationGlobalEventHandler implements GlobalEventHandler {
     if (!shouldSend) return;
 
     final session = await _sessionForNotification(sessionID);
-    if (session != null && _isSubSession(session)) return;
+    if (session == null) return;
+    if (_isSubSession(session)) return;
 
     try {
       await ref
           .read(localNotificationServiceProvider)
           .showSessionError(
-            sessionTitle: session != null
-                ? _normalizedSessionTitle(session.title)
-                : null,
+            sessionTitle: _normalizedSessionTitle(session.title),
           );
     } catch (_) {
       // Ignore local notification failures to avoid affecting SSE handling.
@@ -410,5 +415,17 @@ class _NotificationGlobalEventHandler implements GlobalEventHandler {
     final value = raw?.trim();
     if (value == null || value.isEmpty) return null;
     return value;
+  }
+}
+
+class _DiffGlobalEventHandler implements GlobalEventHandler {
+  const _DiffGlobalEventHandler(this.ref);
+
+  final Ref ref;
+
+  @override
+  void handle(Object payload) {
+    if (payload is! EventSessionDiff) return;
+    ref.invalidate(sessionDiffProvider(payload.sessionID));
   }
 }

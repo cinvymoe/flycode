@@ -55,6 +55,7 @@ class GlobalEventDispatcher {
       GlobalEventRouteTarget.status => ref.read(
         globalEventStatusHandlerProvider,
       ),
+      GlobalEventRouteTarget.diff => ref.read(globalEventDiffHandlerProvider),
     };
   }
 }

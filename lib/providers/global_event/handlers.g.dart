@@ -395,3 +395,51 @@ final class GlobalEventNotificationHandlerProvider
 
 String _$globalEventNotificationHandlerHash() =>
     r'4c50685e0de61a47037ed4e2c21d0112d460feb4';
+
+@ProviderFor(globalEventDiffHandler)
+final globalEventDiffHandlerProvider = GlobalEventDiffHandlerProvider._();
+
+final class GlobalEventDiffHandlerProvider
+    extends
+        $FunctionalProvider<
+          GlobalEventHandler,
+          GlobalEventHandler,
+          GlobalEventHandler
+        >
+    with $Provider<GlobalEventHandler> {
+  GlobalEventDiffHandlerProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'globalEventDiffHandlerProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$globalEventDiffHandlerHash();
+
+  @$internal
+  @override
+  $ProviderElement<GlobalEventHandler> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  GlobalEventHandler create(Ref ref) {
+    return globalEventDiffHandler(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(GlobalEventHandler value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<GlobalEventHandler>(value),
+    );
+  }
+}
+
+String _$globalEventDiffHandlerHash() =>
+    r'7498b62e0ab09abf866f0e89bc548e6a901c7f0f';

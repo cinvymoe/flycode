@@ -11,6 +11,7 @@ enum GlobalEventRouteTarget {
   unread,
   notification,
   status,
+  diff,
 }
 
 bool shouldDispatchGlobalEventForDirectory(
@@ -46,7 +47,8 @@ GlobalEventScope scopeForGlobalEventPayload(Object payload) {
       payload is EventTodoUpdated ||
       payload is EventSessionStatus ||
       payload is EventSessionIdle ||
-      payload is EventSessionError) {
+      payload is EventSessionError ||
+      payload is EventSessionDiff) {
     return GlobalEventScope.project;
   }
 
@@ -98,6 +100,10 @@ List<GlobalEventRouteTarget> routeGlobalEventPayload(Object payload) {
       GlobalEventRouteTarget.unread,
       GlobalEventRouteTarget.notification,
     ];
+  }
+
+  if (payload is EventSessionDiff) {
+    return const <GlobalEventRouteTarget>[GlobalEventRouteTarget.diff];
   }
 
   return const <GlobalEventRouteTarget>[];

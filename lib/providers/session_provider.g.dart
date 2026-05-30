@@ -165,7 +165,7 @@ final class SessionDiffProvider
   }
 }
 
-String _$sessionDiffHash() => r'dc5fdb3610ea7e29f9a3739f3f02e005dc704b5c';
+String _$sessionDiffHash() => r'cd9a00d4f23b1e45cbf27d0d55132257bd7f6117';
 
 final class SessionDiffFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<List<FileDiff>>, String> {

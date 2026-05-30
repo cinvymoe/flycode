@@ -291,6 +291,10 @@ void main() {
 
       expect(sessionApi.requestedSessionIds, ['root-3']);
       expect(notificationService.shownSessionTitles, isEmpty);
+      expect(
+        notificationService.shownErrorSessionTitles,
+        isEmpty,
+      ); // no notification when session lookup fails
       expect(container.read(globalEventListenerProvider).hasError, isFalse);
     },
   );
@@ -419,49 +423,46 @@ void main() {
     expect(notificationService.shownErrorSessionTitles, isEmpty);
   });
 
-  test(
-    'session error with getSession failure still sends notification without title',
-    () async {
-      final controller = StreamController<GlobalEvent>();
-      final globalApi = _FakeGlobalApi(controller);
-      final sessionApi = _FakeSessionApi(
-        sessionsById: const <String, Session>{},
-        throwOnGetSession: true,
-      );
-      final notificationService = _FakeLocalNotificationService();
-      final container = _createContainer(
-        globalApi: globalApi,
-        sessionApi: sessionApi,
-        notificationService: notificationService,
-      );
+  test('session error with getSession failure skips notification', () async {
+    final controller = StreamController<GlobalEvent>();
+    final globalApi = _FakeGlobalApi(controller);
+    final sessionApi = _FakeSessionApi(
+      sessionsById: const <String, Session>{},
+      throwOnGetSession: true,
+    );
+    final notificationService = _FakeLocalNotificationService();
+    final container = _createContainer(
+      globalApi: globalApi,
+      sessionApi: sessionApi,
+      notificationService: notificationService,
+    );
 
-      addTearDown(() async {
-        await controller.close();
-        container.dispose();
-      });
+    addTearDown(() async {
+      await controller.close();
+      container.dispose();
+    });
 
-      final sub = container.listen<AsyncValue<GlobalEvent>>(
-        globalEventListenerProvider,
-        (previous, next) {},
-        fireImmediately: true,
-      );
-      addTearDown(sub.close);
-      await _flushAsyncWork();
+    final sub = container.listen<AsyncValue<GlobalEvent>>(
+      globalEventListenerProvider,
+      (previous, next) {},
+      fireImmediately: true,
+    );
+    addTearDown(sub.close);
+    await _flushAsyncWork();
 
-      controller.add(
-        GlobalEvent(
-          directory: '/tmp/project',
-          payload: EventSessionError(
-            type: 'session.error',
-            sessionID: 'root-err-fail',
-          ),
+    controller.add(
+      GlobalEvent(
+        directory: '/tmp/project',
+        payload: EventSessionError(
+          type: 'session.error',
+          sessionID: 'root-err-fail',
         ),
-      );
-      await _flushAsyncWork();
+      ),
+    );
+    await _flushAsyncWork();
 
-      expect(sessionApi.requestedSessionIds, ['root-err-fail']);
-      expect(notificationService.shownErrorSessionTitles, [null]);
-      expect(container.read(globalEventListenerProvider).hasError, isFalse);
-    },
-  );
+    expect(sessionApi.requestedSessionIds, ['root-err-fail']);
+    expect(notificationService.shownErrorSessionTitles, isEmpty);
+    expect(container.read(globalEventListenerProvider).hasError, isFalse);
+  });
 }

@@ -151,14 +151,14 @@ class ChatInputState extends ConsumerState<ChatInput> {
       }
       // Sort: skills first, then commands, then mcp; within each group,
       // maintain alphabetical order by name.
+      int sourceOrder(String? s) => switch (s) {
+        'skill' => 0,
+        'command' => 1,
+        'mcp' => 2,
+        _ => 3,
+      };
       final sorted = List<Command>.of(filtered)
         ..sort((a, b) {
-          final sourceOrder = (String? s) => switch (s) {
-            'skill' => 0,
-            'command' => 1,
-            'mcp' => 2,
-            _ => 3,
-          };
           final cmp = sourceOrder(a.source).compareTo(sourceOrder(b.source));
           return cmp != 0 ? cmp : a.name.compareTo(b.name);
         });
@@ -564,6 +564,10 @@ class ChatInputState extends ConsumerState<ChatInput> {
           variant,
         );
       } else {
+        // Ensure commands are loaded before parsing so that skill commands
+        // (e.g. "/review") are correctly dispatched via sendCommand instead
+        // of falling through to sendPromptAsync as plain text.
+        await ref.read(commandsProvider.future);
         final matchedCommand = _parseCommand(text);
         if (matchedCommand != null) {
           await _dispatchCommand(
@@ -576,7 +580,14 @@ class ChatInputState extends ConsumerState<ChatInput> {
             text,
           );
         } else {
-          await _dispatchPrompt(api, sessionId, directory, chatConfig, variant);
+          await _dispatchPrompt(
+            api,
+            sessionId,
+            directory,
+            chatConfig,
+            variant,
+            text,
+          );
         }
       }
 
@@ -699,8 +710,8 @@ class ChatInputState extends ConsumerState<ChatInput> {
     String? directory,
     ChatConfig chatConfig,
     String? variant,
+    String text,
   ) async {
-    final text = _controller.text;
     final rootDir = directory ?? '';
 
     // Build file parts from @ pills.
@@ -2302,9 +2313,11 @@ class _SkillSelectionSheetState extends ConsumerState<_SkillSelectionSheet> {
                   ),
                 ),
                 data: (skills) {
-                  var filtered = skills;
+                  // Only show enabled skills — disabled ones cannot be
+                  // dispatched as commands and would silently fail.
+                  var filtered = skills.where((s) => s.enabled).toList();
                   if (_searchQuery.isNotEmpty) {
-                    filtered = skills
+                    filtered = filtered
                         .where(
                           (s) =>
                               s.skill.name.toLowerCase().contains(

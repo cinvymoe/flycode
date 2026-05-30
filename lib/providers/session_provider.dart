@@ -3,6 +3,7 @@ import '../service/api/models/message.dart' hide FileDiff;
 import '../service/api/models/parts.dart';
 import '../service/api/session_api.dart';
 import '../service/api/models/session.dart';
+import 'current_directory_provider.dart';
 
 part 'session_provider.g.dart';
 
@@ -202,7 +203,8 @@ String _messageId(MessageWithParts m) {
 @riverpod
 Future<List<FileDiff>> sessionDiff(Ref ref, String sessionID) async {
   final api = await ref.watch(sessionApiProvider.future);
-  return api.getSessionDiff(sessionID);
+  final directory = ref.watch(currentDirectoryProvider);
+  return api.getSessionDiff(sessionID, directory: directory);
 }
 
 /// 子 Session 消息列表（只读，支持 SSE 实时更新）
