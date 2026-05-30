@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../service/api/models/message.dart' hide FileDiff;
 import '../service/api/models/parts.dart';
@@ -8,6 +9,19 @@ import 'current_directory_provider.dart';
 import 'todo_provider.dart';
 
 part 'session_provider.g.dart';
+
+/// 存储待编辑的消息文本（例如回退后填充到输入框）
+class PendingEditMessageNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void set(String? value) => state = value;
+}
+
+final pendingEditMessageProvider =
+    NotifierProvider<PendingEditMessageNotifier, String?>(
+      PendingEditMessageNotifier.new,
+    );
 
 final class MessageListStateReducer {
   const MessageListStateReducer._();
@@ -192,6 +206,22 @@ class SessionMessagesNotifier extends _$SessionMessagesNotifier {
   Future<void> revertToMessage(String messageID) async {
     final api = await ref.read(sessionApiProvider.future);
     final directory = ref.read(currentDirectoryProvider);
+
+    // 获取被回退消息的文本内容，用于填充到输入框
+    try {
+      final message = await api.getMessage(
+        sessionID,
+        messageID,
+        directory: directory,
+      );
+      final textContent = _extractTextFromMessage(message);
+      if (textContent.isNotEmpty) {
+        ref.read(pendingEditMessageProvider.notifier).set(textContent);
+      }
+    } catch (_) {
+      // 如果获取消息失败，仍然继续回退操作
+    }
+
     await api.revertMessage(
       sessionID,
       data: {'messageID': messageID},
@@ -206,6 +236,18 @@ class SessionMessagesNotifier extends _$SessionMessagesNotifier {
   void _setState(List<MessageWithParts> messages) {
     state = AsyncData(messages);
   }
+}
+
+/// 从消息中提取文本内容（用于回退后填充到输入框）
+String _extractTextFromMessage(MessageWithParts message) {
+  final buffer = StringBuffer();
+  for (final part in message.parts) {
+    if (part is TextPart && part.synthetic != true && part.text.isNotEmpty) {
+      if (buffer.isNotEmpty) buffer.write('\n');
+      buffer.write(part.text);
+    }
+  }
+  return buffer.toString();
 }
 
 String _messageId(MessageWithParts m) {
@@ -281,6 +323,22 @@ class SubSessionMessagesNotifier extends _$SubSessionMessagesNotifier {
   Future<void> revertToMessage(String messageID) async {
     final api = await ref.read(sessionApiProvider.future);
     final directory = ref.read(currentDirectoryProvider);
+
+    // 获取被回退消息的文本内容，用于填充到输入框
+    try {
+      final message = await api.getMessage(
+        sessionID,
+        messageID,
+        directory: directory,
+      );
+      final textContent = _extractTextFromMessage(message);
+      if (textContent.isNotEmpty) {
+        ref.read(pendingEditMessageProvider.notifier).set(textContent);
+      }
+    } catch (_) {
+      // 如果获取消息失败，仍然继续回退操作
+    }
+
     await api.revertMessage(
       sessionID,
       data: {'messageID': messageID},

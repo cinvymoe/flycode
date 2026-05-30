@@ -26,6 +26,7 @@ import '../../providers/session_status_provider.dart';
 import '../../providers/session_unread_provider.dart';
 import '../../providers/model_variant_provider.dart';
 import '../../providers/skill_provider.dart';
+import '../../providers/session_provider.dart';
 import '../../service/api/models/agent.dart';
 import '../../service/api/models/provider.dart';
 import '../../service/api/models/skill.dart';
@@ -943,6 +944,18 @@ class ChatInputState extends ConsumerState<ChatInput> {
       final status = statuses[sid];
       if (status == null || status is SessionStatusIdle) {
         setState(() => _isAborting = false);
+      }
+    });
+
+    // 监听回退后的待编辑消息，填充到输入框
+    ref.listen<String?>(pendingEditMessageProvider, (previous, next) {
+      if (next != null && next.isNotEmpty) {
+        _controller.text = next;
+        _focusNode.requestFocus();
+        // 清空待编辑状态，避免重复填充
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(pendingEditMessageProvider.notifier).set(null);
+        });
       }
     });
 
