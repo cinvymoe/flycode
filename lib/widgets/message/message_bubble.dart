@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/l10n.dart';
 import '../../providers/provider_list_provider.dart';
+import '../../providers/session_provider.dart';
 import '../../service/api/models/provider.dart';
 import '../../service/api/models/message.dart';
 import '../../service/api/models/parts.dart'
@@ -19,6 +20,9 @@ class MessageBubble extends ConsumerStatefulWidget {
   final MessageWithParts messageWithParts;
   final bool prevIsUser;
   final bool isLatestMessage;
+  final String? sessionID;
+  final bool isWorking;
+  final bool isReverted;
   final void Function(String sessionId)? onNavigateToSubSession;
 
   const MessageBubble({
@@ -26,6 +30,9 @@ class MessageBubble extends ConsumerStatefulWidget {
     required this.messageWithParts,
     required this.prevIsUser,
     this.isLatestMessage = false,
+    this.sessionID,
+    this.isWorking = false,
+    this.isReverted = false,
     this.onNavigateToSubSession,
   });
 
@@ -95,6 +102,46 @@ class _MessageBubbleState extends ConsumerState<MessageBubble> {
     await Future<void>.delayed(const Duration(seconds: 2));
     if (!mounted) return;
     setState(() => _copied = false);
+  }
+
+  Future<void> _showRevertDialog() async {
+    final userMessage = widget.messageWithParts.info;
+    if (userMessage is! UserMessage) return;
+    final sessionId = widget.sessionID;
+    if (sessionId == null) return;
+
+    final l10n = context.l10n;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.revertConfirmTitle),
+        content: Text(l10n.revertConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.revertCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.revertConfirmAction),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await ref
+          .read(sessionMessagesProvider(sessionId).notifier)
+          .revertToMessage(userMessage.id);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.revertFailed(e.toString()))),
+        );
+      }
+    }
   }
 
   @override
@@ -270,6 +317,13 @@ class _MessageBubbleState extends ConsumerState<MessageBubble> {
                 copied: _copied,
                 onCopy: _copyMessage,
                 showCopy: _hasTextContent,
+                showRevert:
+                    widget.sessionID != null &&
+                    !widget.isWorking &&
+                    !widget.isReverted &&
+                    widget.messageWithParts.info is UserMessage &&
+                    !widget.isLatestMessage,
+                onRevert: _showRevertDialog,
               ),
             ],
           ),
@@ -473,6 +527,8 @@ class _UserFooter extends StatelessWidget {
   final bool copied;
   final VoidCallback onCopy;
   final bool showCopy;
+  final bool showRevert;
+  final VoidCallback onRevert;
 
   const _UserFooter({
     required this.message,
@@ -481,6 +537,8 @@ class _UserFooter extends StatelessWidget {
     required this.copied,
     required this.onCopy,
     required this.showCopy,
+    required this.showRevert,
+    required this.onRevert,
   });
 
   String _displayModelAndAgent() {
@@ -510,6 +568,20 @@ class _UserFooter extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (showRevert) ...[
+              GestureDetector(
+                onTap: onRevert,
+                child: Tooltip(
+                  message: context.l10n.revertToHere,
+                  child: Icon(
+                    Icons.restore_outlined,
+                    size: 14,
+                    color: tokens.mutedForeground,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
             ConstrainedBox(
               constraints: BoxConstraints(maxWidth: maxModelWidth),
               child: Text(
