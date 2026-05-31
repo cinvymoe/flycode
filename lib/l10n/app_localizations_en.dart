@@ -734,7 +734,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get revertBannerText =>
-      'Reverted · Messages after this point have been removed';
+      'Reverted · Messages after this point are hidden';
 
   @override
   String get revertRestore => 'Restore';

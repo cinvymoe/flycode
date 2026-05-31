@@ -462,7 +462,7 @@
   "@revertConfirmAction": {},
   "revertCancel": "Cancel",
   "@revertCancel": {},
-  "revertBannerText": "Reverted · Messages after this point have been removed",
+  "revertBannerText": "Reverted · Messages after this point are hidden",
   "@revertBannerText": {},
   "revertRestore": "Restore",
   "@revertRestore": {},

@@ -707,7 +707,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get revertCancel => '取消';
 
   @override
-  String get revertBannerText => '已回退 · 之后的消息已移除';
+  String get revertBannerText => '已回退 · 之后的消息已隐藏';
 
   @override
   String get revertRestore => '恢复';
