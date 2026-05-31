@@ -10,7 +10,7 @@ part 'session_status_provider.g.dart';
 ///
 /// The map only contains entries for sessions that are non-idle.
 /// A missing key is equivalent to [SessionStatusIdle].
-@Riverpod()
+@Riverpod(keepAlive: true)
 class SessionStatusNotifier extends _$SessionStatusNotifier {
   static const Duration _pollInterval = Duration(seconds: 5);
 
