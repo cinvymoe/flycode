@@ -26,7 +26,7 @@ bool shouldSendSessionCompletionNotification({
   );
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class GlobalEventListener extends _$GlobalEventListener {
   @override
   Stream<GlobalEvent> build() async* {
@@ -45,7 +45,7 @@ class GlobalEventListener extends _$GlobalEventListener {
       next.whenData(dispatcher.dispatch);
     });
 
-    yield* api.subscribeToGlobalEvents(
+    await for (final event in api.subscribeToGlobalEvents(
       onConnectionStateChanged: (nextState) {
         final previousState = latestConnectionState;
         latestConnectionState = nextState;
@@ -62,7 +62,9 @@ class GlobalEventListener extends _$GlobalEventListener {
           }
         });
       },
-    );
+    )) {
+      yield event;
+    }
   }
 
   void _bootstrapGlobalEventSideEffects() {
