@@ -26,7 +26,7 @@ final class GlobalApiProvider
         argument: null,
         retry: null,
         name: r'globalApiProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -45,4 +45,4 @@ final class GlobalApiProvider
   }
 }
 
-String _$globalApiHash() => r'f01ce5f2e197fda4736282ca300a5216df0f00f6';
+String _$globalApiHash() => r'bf1b028af5cb048186e75e6b6908fa8451867641';
