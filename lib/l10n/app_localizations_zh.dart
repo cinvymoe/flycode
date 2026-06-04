@@ -572,6 +572,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get modelSelectionFavorited => '已收藏';
 
   @override
+  String get modelSelectionRecommended => '推荐';
+
+  @override
+  String get modelSelectionNoStarredModels => '给模型加星即可在此快速访问';
+
+  @override
   String get messageCopy => '复制';
 
   @override

@@ -374,6 +374,8 @@
   "modelSelectionNoMatchedModels": "No matching models",
   "modelSelectionNoModelsUnderProvider": "No available models under this provider",
   "modelSelectionFavorited": "Favorited",
+  "modelSelectionRecommended": "Recommended",
+  "modelSelectionNoStarredModels": "Star a model to access it quickly here",
   "messageCopy": "Copy",
   "messageCopied": "Copied",
   "todoPanelTitle": "AI Task Plan",

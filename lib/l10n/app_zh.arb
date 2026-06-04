@@ -374,6 +374,8 @@
   "modelSelectionNoMatchedModels": "没有匹配的模型",
   "modelSelectionNoModelsUnderProvider": "该提供商下没有可用模型",
   "modelSelectionFavorited": "已收藏",
+  "modelSelectionRecommended": "推荐",
+  "modelSelectionNoStarredModels": "给模型加星即可在此快速访问",
   "messageCopy": "复制",
   "messageCopied": "已复制",
   "todoPanelTitle": "AI 任务规划",
