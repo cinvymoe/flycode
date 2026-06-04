@@ -7,6 +7,7 @@ import '../../service/api/models/message.dart';
 import '../../providers/model_config_provider.dart';
 import '../../providers/chat_config_provider.dart';
 import '../../providers/provider_list_provider.dart';
+import '../../providers/starred_models_provider.dart';
 import '../../theme/app_tokens.dart';
 
 class ModelSelectionSheet extends ConsumerStatefulWidget {
@@ -23,6 +24,7 @@ class _ModelSelectionSheetState extends ConsumerState<ModelSelectionSheet> {
   String _selectedFilterKey = _filterAll;
 
   static const String _filterAll = 'all';
+  static const String _filterRecommended = 'recommended';
 
   @override
   void initState() {
@@ -45,6 +47,7 @@ class _ModelSelectionSheetState extends ConsumerState<ModelSelectionSheet> {
     final l10n = context.l10n;
     final providerListAsync = ref.watch(providerListProvider);
     final configsAsync = ref.watch(modelConfigProvider);
+    final starredModels = ref.watch(starredModelsProvider);
     final theme = Theme.of(context);
     final tokens = context.tokens;
     final pagePadding = tokens.pageHorizontalPadding;
@@ -165,6 +168,7 @@ class _ModelSelectionSheetState extends ConsumerState<ModelSelectionSheet> {
                       context,
                       providerList,
                       configs,
+                      starredModels,
                       _searchQuery,
                       _selectedProviderId,
                     ),
@@ -195,6 +199,8 @@ class _ModelSelectionSheetState extends ConsumerState<ModelSelectionSheet> {
     }
     return _selectedFilterKey;
   }
+
+  bool get _showRecommendedOnly => _selectedFilterKey == _filterRecommended;
 
   Widget _buildErrorState(BuildContext context, String message) {
     final tokens = context.tokens;
@@ -253,6 +259,7 @@ class _ModelSelectionSheetState extends ConsumerState<ModelSelectionSheet> {
       child: Row(
         children: [
           chip(key: _filterAll, label: context.l10n.commonAll),
+          chip(key: _filterRecommended, label: context.l10n.modelSelectionRecommended),
           for (final provider in providers) ...[
             const SizedBox(width: 8),
             chip(key: provider.id, label: provider.name),
@@ -265,6 +272,7 @@ class _ModelSelectionSheetState extends ConsumerState<ModelSelectionSheet> {
   Map<ProviderModel, List<MapEntry<String, ModelInfo>>> _buildProviderGroups(
     ProviderListResponse providerList,
     Map<String, Map<String, bool>> configs,
+    Set<String> starredModels,
     String query,
   ) {
     final normalizedQuery = query.trim().toLowerCase();
@@ -290,6 +298,13 @@ class _ModelSelectionSheetState extends ConsumerState<ModelSelectionSheet> {
         return _isRecentlyReleased(model.releaseDate);
       }).toList();
 
+      // Filter by starred if recommended mode is active
+      if (_showRecommendedOnly) {
+        availableModels = availableModels.where((entry) {
+          return starredModels.contains('${provider.id}/${entry.key}');
+        }).toList();
+      }
+
       if (normalizedQuery.isNotEmpty) {
         availableModels = availableModels.where((entry) {
           final model = entry.value;
@@ -310,6 +325,7 @@ class _ModelSelectionSheetState extends ConsumerState<ModelSelectionSheet> {
     BuildContext context,
     ProviderListResponse providerList,
     Map<String, Map<String, bool>> configs,
+    Set<String> starredModels,
     String searchQuery,
     String? selectedProviderId,
   ) {
@@ -318,6 +334,7 @@ class _ModelSelectionSheetState extends ConsumerState<ModelSelectionSheet> {
     final providerGroups = _buildProviderGroups(
       providerList,
       configs,
+      starredModels,
       searchQuery,
     );
 
@@ -388,6 +405,15 @@ class _ModelSelectionSheetState extends ConsumerState<ModelSelectionSheet> {
     }
 
     if (listItems.isEmpty) {
+      if (_showRecommendedOnly) {
+        return Center(
+          child: Text(
+            context.l10n.modelSelectionNoStarredModels,
+            style: TextStyle(color: tokens.mutedForeground, fontSize: 14),
+          ),
+        );
+      }
+
       final noMatchByQuery = searchQuery.trim().isNotEmpty;
       final noMatchByProvider =
           selectedProviderId != null && searchQuery.trim().isEmpty;
@@ -441,7 +467,11 @@ class _ModelTile extends ConsumerWidget {
         currentConfig.model.modelID == modelInfo.id;
     final theme = Theme.of(context);
     final tokens = context.tokens;
-    final isFavorite = _isFavoriteModel(modelInfo);
+    final starredModels = ref.watch(starredModelsProvider);
+    final isStarred = starredModels.contains('$providerId/${modelInfo.id}');
+    final isServerFavorite = _isFavoriteModel(modelInfo);
+    // Only show server badge when not locally starred (avoid visual dup)
+    final showServerBadge = !isStarred && isServerFavorite && !isSelected;
 
     return Material(
       color: isSelected
@@ -484,7 +514,27 @@ class _ModelTile extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  if (isFavorite && !isSelected)
+                  // Star toggle button — does NOT close the sheet
+                  GestureDetector(
+                    onTap: () {
+                      ref
+                          .read(starredModelsProvider.notifier)
+                          .toggleStar(providerId, modelInfo.id);
+                    },
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4.0),
+                      child: Icon(
+                        isStarred ? Icons.star : Icons.star_border,
+                        size: 20,
+                        color: isStarred
+                            ? theme.colorScheme.primary
+                            : tokens.mutedForeground,
+                      ),
+                    ),
+                  ),
+                  // Server-side favorite badge (only when not starred)
+                  if (showServerBadge)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 7,
