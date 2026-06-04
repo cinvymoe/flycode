@@ -20,7 +20,7 @@ class StarredModels extends _$StarredModels {
       _restored = true;
       unawaited(_restore());
     }
-    return <String>{};
+    return Set<String>.from(_starred);
   }
 
   bool isStarred(String providerId, String modelId) {
