@@ -194,7 +194,8 @@ class _ModelSelectionSheetState extends ConsumerState<ModelSelectionSheet> {
   }
 
   String? get _selectedProviderId {
-    if (_selectedFilterKey == _filterAll) {
+    if (_selectedFilterKey == _filterAll ||
+        _selectedFilterKey == _filterRecommended) {
       return null;
     }
     return _selectedFilterKey;
