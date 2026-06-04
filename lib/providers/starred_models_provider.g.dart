@@ -41,7 +41,7 @@ final class StarredModelsProvider
   }
 }
 
-String _$starredModelsHash() => r'6f394f3754fc70fd4afd5806a75e9c3cbf82f525';
+String _$starredModelsHash() => r'4ab24c580946cff6c89614baf973067cb71eb222';
 
 abstract class _$StarredModels extends $Notifier<Set<String>> {
   Set<String> build();

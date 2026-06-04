@@ -259,7 +259,10 @@ class _ModelSelectionSheetState extends ConsumerState<ModelSelectionSheet> {
       child: Row(
         children: [
           chip(key: _filterAll, label: context.l10n.commonAll),
-          chip(key: _filterRecommended, label: context.l10n.modelSelectionRecommended),
+          chip(
+            key: _filterRecommended,
+            label: context.l10n.modelSelectionRecommended,
+          ),
           for (final provider in providers) ...[
             const SizedBox(width: 8),
             chip(key: provider.id, label: provider.name),
