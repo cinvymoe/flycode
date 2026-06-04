@@ -33,7 +33,7 @@ class ChatConfig {
       ' modelID: ${model.modelID})';
 }
 
-@Riverpod()
+@Riverpod(keepAlive: true)
 class ChatConfigNotifier extends _$ChatConfigNotifier {
   @override
   ChatConfig build() {
