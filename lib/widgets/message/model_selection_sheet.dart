@@ -515,23 +515,22 @@ class _ModelTile extends ConsumerWidget {
                     ),
                   ),
                   // Star toggle button — does NOT close the sheet
-                  GestureDetector(
-                    onTap: () {
+                  IconButton(
+                    onPressed: () {
                       ref
                           .read(starredModelsProvider.notifier)
                           .toggleStar(providerId, modelInfo.id);
                     },
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: const EdgeInsets.all(4.0),
-                      child: Icon(
-                        isStarred ? Icons.star : Icons.star_border,
-                        size: 20,
-                        color: isStarred
-                            ? theme.colorScheme.primary
-                            : tokens.mutedForeground,
-                      ),
+                    icon: Icon(
+                      isStarred ? Icons.star : Icons.star_border,
+                      size: 20,
+                      color: isStarred
+                          ? theme.colorScheme.primary
+                          : tokens.mutedForeground,
                     ),
+                    padding: const EdgeInsets.all(4.0),
+                    constraints: const BoxConstraints(),
+                    visualDensity: VisualDensity.compact,
                   ),
                   // Server-side favorite badge (only when not starred)
                   if (showServerBadge)
