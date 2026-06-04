@@ -29,7 +29,6 @@ import '../../providers/skill_provider.dart';
 import '../../providers/session_provider.dart';
 import '../../service/api/models/agent.dart';
 import '../../service/api/models/provider.dart';
-import '../../service/api/models/skill.dart';
 import '../../service/api/models/permission.dart';
 import '../../service/api/models/session.dart';
 import '../../service/api/models/session_status.dart';
@@ -870,10 +869,10 @@ class ChatInputState extends ConsumerState<ChatInput> {
         context,
       ).colorScheme.surface.withValues(alpha: 0),
       builder: (context) => _SkillSelectionSheet(
-        onSkillTap: (skill) {
+        onSkillTap: (command) {
           _controller.value = TextEditingValue(
-            text: '/${skill.name} ',
-            selection: TextSelection.collapsed(offset: skill.name.length + 2),
+            text: '/${command.name} ',
+            selection: TextSelection.collapsed(offset: command.name.length + 2),
           );
           Navigator.of(context).pop();
           _focusNode.requestFocus();
@@ -1022,10 +1021,10 @@ class ChatInputState extends ConsumerState<ChatInput> {
               agents: ref.watch(agentsProvider).asData?.value ?? const [],
               skillCount:
                   ref
-                      .watch(skillProvider)
+                      .watch(commandsProvider)
                       .asData
                       ?.value
-                      .where((s) => s.enabled)
+                      .where((c) => c.source == 'skill')
                       .length ??
                   0,
               onAgentTap: _handleAgentTap,
@@ -2234,9 +2233,13 @@ class _AtFileSuggestionList extends StatelessWidget {
 }
 
 // ─── Skill 选择底部弹窗 ──────────────────────────────────────────
+//
+// Uses commandsProvider (source == 'skill') as the primary data source so
+// that every listed skill is guaranteed to match _parseCommand on send.
+// skillProvider is only used for starred/enabled state enrichment.
 
 class _SkillSelectionSheet extends ConsumerStatefulWidget {
-  final ValueChanged<Skill>? onSkillTap;
+  final ValueChanged<Command>? onSkillTap;
 
   const _SkillSelectionSheet({this.onSkillTap});
 
@@ -2253,6 +2256,10 @@ class _SkillSelectionSheetState extends ConsumerState<_SkillSelectionSheet> {
     final theme = Theme.of(context);
     final tokens = context.tokens;
     final maxSheetHeight = MediaQuery.of(context).size.height * 0.72;
+
+    // Primary source: commandsProvider (guaranteed to match _parseCommand).
+    final commandsAsync = ref.watch(commandsProvider);
+    // Secondary source: skillProvider for starred/enabled enrichment.
     final skillsAsync = ref.watch(skillProvider);
 
     return Container(
@@ -2353,7 +2360,7 @@ class _SkillSelectionSheetState extends ConsumerState<_SkillSelectionSheet> {
             Divider(height: 1, color: tokens.border.withValues(alpha: 0.5)),
             // Skill list
             Flexible(
-              child: skillsAsync.when(
+              child: commandsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, _) => Center(
                   child: Padding(
@@ -2365,18 +2372,33 @@ class _SkillSelectionSheetState extends ConsumerState<_SkillSelectionSheet> {
                     ),
                   ),
                 ),
-                data: (skills) {
+                data: (commands) {
+                  // Only show commands with source == 'skill'.
+                  var skillCommands = commands
+                      .where((c) => c.source == 'skill')
+                      .toList();
+
+                  // Enrich with starred/enabled state from skillProvider.
+                  final skillRecords = skillsAsync.asData?.value ?? const [];
+                  final recordByName = <String, SkillRecord>{};
+                  for (final r in skillRecords) {
+                    recordByName[r.skill.name] = r;
+                  }
+
                   // Only show enabled skills — disabled ones cannot be
                   // dispatched as commands and would silently fail.
-                  var filtered = skills.where((s) => s.enabled).toList();
+                  skillCommands = skillCommands.where((c) {
+                    final record = recordByName[c.name];
+                    // If no local record exists (first sync), treat as enabled.
+                    return record == null || record.enabled;
+                  }).toList();
+
                   if (_searchQuery.isNotEmpty) {
-                    filtered = filtered
+                    skillCommands = skillCommands
                         .where(
-                          (s) =>
-                              s.skill.name.toLowerCase().contains(
-                                _searchQuery,
-                              ) ||
-                              (s.skill.description?.toLowerCase().contains(
+                          (c) =>
+                              c.name.toLowerCase().contains(_searchQuery) ||
+                              (c.description?.toLowerCase().contains(
                                     _searchQuery,
                                   ) ??
                                   false),
@@ -2385,15 +2407,17 @@ class _SkillSelectionSheetState extends ConsumerState<_SkillSelectionSheet> {
                   }
 
                   // Sort: starred first, then alphabetical by name.
-                  filtered = List<SkillRecord>.from(filtered)
+                  skillCommands = List<Command>.from(skillCommands)
                     ..sort((a, b) {
-                      if (a.starred != b.starred) {
-                        return a.starred ? -1 : 1;
+                      final aStarred = recordByName[a.name]?.starred ?? false;
+                      final bStarred = recordByName[b.name]?.starred ?? false;
+                      if (aStarred != bStarred) {
+                        return aStarred ? -1 : 1;
                       }
-                      return a.skill.name.compareTo(b.skill.name);
+                      return a.name.compareTo(b.name);
                     });
 
-                  if (filtered.isEmpty) {
+                  if (skillCommands.isEmpty) {
                     return Center(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 32),
@@ -2408,10 +2432,11 @@ class _SkillSelectionSheetState extends ConsumerState<_SkillSelectionSheet> {
                   return ListView.builder(
                     shrinkWrap: true,
                     padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
-                    itemCount: filtered.length,
+                    itemCount: skillCommands.length,
                     itemBuilder: (ctx, i) {
-                      final record = filtered[i];
-                      final skill = record.skill;
+                      final command = skillCommands[i];
+                      final record = recordByName[command.name];
+                      final isStarred = record?.starred ?? false;
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 6),
@@ -2420,7 +2445,7 @@ class _SkillSelectionSheetState extends ConsumerState<_SkillSelectionSheet> {
                           borderRadius: BorderRadius.circular(tokens.radiusM),
                           child: InkWell(
                             onTap: () {
-                              widget.onSkillTap?.call(skill);
+                              widget.onSkillTap?.call(command);
                             },
                             borderRadius: BorderRadius.circular(tokens.radiusM),
                             splashColor: theme.colorScheme.primary.withValues(
@@ -2441,25 +2466,25 @@ class _SkillSelectionSheetState extends ConsumerState<_SkillSelectionSheet> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          '/${skill.name}',
+                                          '/${command.name}',
                                           style: TextStyle(
                                             fontSize: 15,
-                                            fontWeight: record.starred
+                                            fontWeight: isStarred
                                                 ? FontWeight.w700
                                                 : FontWeight.w600,
-                                            color: record.starred
+                                            color: isStarred
                                                 ? theme.colorScheme.primary
                                                 : theme.colorScheme.onSurface,
                                           ),
                                         ),
-                                        if (skill.description != null &&
-                                            skill.description!.isNotEmpty)
+                                        if (command.description != null &&
+                                            command.description!.isNotEmpty)
                                           Padding(
                                             padding: const EdgeInsets.only(
                                               top: 2,
                                             ),
                                             child: Text(
-                                              skill.description!,
+                                              command.description!,
                                               style: TextStyle(
                                                 fontSize: 13,
                                                 color: tokens.mutedForeground,
@@ -2476,17 +2501,17 @@ class _SkillSelectionSheetState extends ConsumerState<_SkillSelectionSheet> {
                                     onTap: () {
                                       ref
                                           .read(skillProvider.notifier)
-                                          .toggleStar(skill.name);
+                                          .toggleStar(command.name);
                                     },
                                     behavior: HitTestBehavior.opaque,
                                     child: Padding(
                                       padding: const EdgeInsets.all(4),
                                       child: Icon(
-                                        record.starred
+                                        isStarred
                                             ? Icons.star
                                             : Icons.star_border,
                                         size: 20,
-                                        color: record.starred
+                                        color: isStarred
                                             ? theme.colorScheme.primary
                                             : tokens.mutedForeground,
                                       ),
