@@ -6,8 +6,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'chat_view_state_provider.dart';
 import '../service/api/models/agent.dart' as agent_model;
 import '../service/api/models/message.dart';
+import '../service/api/session_api.dart';
 import 'shared_preferences_provider.dart';
-import 'session_provider.dart';
 
 part 'chat_config_provider.g.dart';
 
@@ -87,7 +87,8 @@ class ChatConfigNotifier extends _$ChatConfigNotifier {
   /// 2) Fallback to the last AssistantMessage's provider/model.
   /// If no suitable message exists, current config is preserved.
   Future<void> _syncModelFromSession(String sessionID) async {
-    final messages = await ref.read(sessionMessagesProvider(sessionID).future);
+    final api = await ref.read(sessionApiProvider.future);
+    final messages = await api.getSessionMessages(sessionID);
     if (!ref.mounted || messages.isEmpty) return;
 
     // Track the most recent AssistantMessage for model fallback.

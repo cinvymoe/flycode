@@ -6,7 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flycode/providers/chat_config_provider.dart';
 import 'package:flycode/providers/chat_view_state_provider.dart';
-import 'package:flycode/providers/session_provider.dart';
+import 'package:flycode/service/api/session_api.dart';
+import 'package:flycode/service/api/api_client.dart';
 import 'package:flycode/service/api/models/message.dart';
 
 const _kCacheKey = 'chat_config_last_used_model';
@@ -15,10 +16,15 @@ const _kFallbackModel = 'minimax-m2.5-free';
 
 List<MessageWithParts> _fakeSessionMessages = <MessageWithParts>[];
 
-class _FakeSessionMessagesNotifier extends SessionMessagesNotifier {
+class _FakeSessionApi extends SessionApi {
+  _FakeSessionApi() : super(ApiClient(baseUrl: 'http://fake'));
+
   @override
-  Future<List<MessageWithParts>> build(String sessionID) async =>
-      _fakeSessionMessages;
+  Future<List<MessageWithParts>> getSessionMessages(
+    String id, {
+    String? directory,
+    int? limit,
+  }) async => _fakeSessionMessages;
 }
 
 MessageWithParts _userMessage({
@@ -78,9 +84,7 @@ ProviderSubscription<ChatConfig> _listenChatConfig(
 ProviderContainer _makeContainer() {
   return ProviderContainer(
     overrides: [
-      sessionMessagesProvider(
-        'sess-1',
-      ).overrideWith(_FakeSessionMessagesNotifier.new),
+      sessionApiProvider.overrideWith((ref) async => _FakeSessionApi()),
     ],
   );
 }
@@ -88,9 +92,7 @@ ProviderContainer _makeContainer() {
 ProviderContainer _makeContainerWithSelectedSession(String sessionID) {
   return ProviderContainer(
     overrides: [
-      sessionMessagesProvider(
-        sessionID,
-      ).overrideWith(_FakeSessionMessagesNotifier.new),
+      sessionApiProvider.overrideWith((ref) async => _FakeSessionApi()),
       chatViewStateProvider.overrideWithValue((
         sessionId: sessionID,
         isPending: false,
