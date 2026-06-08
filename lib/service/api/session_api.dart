@@ -188,6 +188,7 @@ class SessionApi {
       queryParameters: queryParams,
       body: data?.toJson(),
       extraHeaders: extraHeaders,
+      timeout: const Duration(seconds: 120),
     );
   }
 
@@ -366,6 +367,7 @@ class SessionApi {
       queryParameters: queryParams,
       body: data,
       extraHeaders: extraHeaders,
+      timeout: const Duration(seconds: 120),
     );
   }
 

@@ -160,10 +160,11 @@ class ApiClient {
   }
 
   Future<dynamic> _executeRequest(
-    Future<http.Response> Function() request,
-  ) async {
+    Future<http.Response> Function() request, {
+    Duration? timeout,
+  }) async {
     try {
-      final response = await request().timeout(_requestTimeout);
+      final response = await request().timeout(timeout ?? _requestTimeout);
       return _handleResponse(response);
     } on ApiException {
       rethrow;
@@ -219,6 +220,7 @@ class ApiClient {
     dynamic body,
     Map<String, String>? queryParameters,
     Map<String, String>? extraHeaders,
+    Duration? timeout,
   }) async {
     _ensureOpen();
     final headers = _getHeaders();
@@ -229,6 +231,7 @@ class ApiClient {
         headers: headers,
         body: body != null ? jsonEncode(body) : null,
       ),
+      timeout: timeout,
     );
   }
 
